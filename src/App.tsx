@@ -35,6 +35,7 @@ const NewsList = lazy(() => import("./admin/pages/NewsList"));
 const NewsForm = lazy(() => import("./admin/pages/NewsForm"));
 const Approvals = lazy(() => import("./admin/pages/Approvals"));
 const Reports = lazy(() => import("./admin/pages/Reports"));
+const Performance = lazy(() => import("./admin/pages/Performance"));
 
 const queryClient = new QueryClient();
 
@@ -134,6 +135,7 @@ const App = () => {
                                 <Route path="/news/edit/:id" element={<NewsForm />} />
                                 <Route path="/approvals" element={<Approvals />} />
                                 <Route path="/reports" element={<Reports />} />
+                                <Route path="/performance" element={<Performance />} />
                                 <Route path="*" element={<NotFoundLazy />} />
                               </Routes>
                             </AdminLayout>

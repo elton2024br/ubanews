@@ -33,7 +33,8 @@ import {
   CheckCircle,
   Clock,
   BarChart3,
-  User
+  User,
+  Gauge
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -71,6 +72,12 @@ const navigation: NavigationItem[] = [
     name: 'Relatórios',
     href: '/admin/reports',
     icon: BarChart3,
+    allowedRoles: ['admin', 'editor'],
+  },
+  {
+    name: 'Performance',
+    href: '/admin/performance',
+    icon: Gauge,
     allowedRoles: ['admin', 'editor'],
   },
   {
