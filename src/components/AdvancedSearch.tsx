@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useButtonInteractions, useFormInteractions } from '@/hooks/useMicrointeractions';
 import { announceToScreenReader } from '@/utils/accessibility';
+import useCategories from '@/hooks/useCategories';
 
 interface SearchSuggestion {
   id: string;
@@ -39,9 +40,6 @@ const mockSuggestions: SearchSuggestion[] = [
   { id: '5', text: 'meio ambiente', type: 'tag', count: 98 }
 ];
 
-const categories = [
-  'Política', 'Economia', 'Esportes', 'Cultura', 'Turismo', 'Saúde', 'Educação', 'Meio Ambiente'
-];
 
 const dateFilters = [
   { label: 'Última hora', value: '1h' },
@@ -65,6 +63,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState<SearchFilter[]>([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState<SearchSuggestion[]>(suggestions);
+  const { categories } = useCategories();
   
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -335,16 +334,16 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               <div className="flex flex-wrap gap-2">
                 {categories.map((category) => {
                   const filter: SearchFilter = {
-                    id: `category-${category}`,
-                    label: category,
-                    value: category,
+                    id: `category-${category.id}`,
+                    label: category.name,
+                    value: category.name,
                     type: 'category'
                   };
                   const isActive = activeFilters.some(f => f.id === filter.id);
-                  
+
                   return (
                     <Button
-                      key={category}
+                      key={category.id}
                       variant={isActive ? 'default' : 'outline'}
                       size="sm"
                       {...createButtonProps({
@@ -356,7 +355,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                         createButtonProps({ onClick: () => toggleFilter(filter) }).className
                       )}
                     >
-                      {category}
+                      {category.name}
                     </Button>
                   );
                 })}
