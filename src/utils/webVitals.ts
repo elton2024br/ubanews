@@ -97,7 +97,7 @@ function sendToAnalytics(data: PerformanceData) {
   // Persist metrics in Supabase for monitoring
   const metric = data.metrics[0];
   if (metric) {
-    void supabase.from('web_vitals').insert({
+    supabase.from('web_vitals').insert({
       name: metric.name,
       value: metric.value,
       rating: metric.rating,
@@ -110,6 +110,8 @@ function sendToAnalytics(data: PerformanceData) {
       screen_width: data.deviceInfo.screenWidth,
       screen_height: data.deviceInfo.screenHeight,
       device_pixel_ratio: data.deviceInfo.devicePixelRatio
+    }).then(() => {
+      // Success - no action needed
     }).catch(error => {
       console.warn('Failed to send Web Vitals to Supabase:', error);
     });

@@ -1,0 +1,1 @@
+SELECT email, full_name, role, is_active, two_factor_enabled FROM admin_users ORDER BY email;
