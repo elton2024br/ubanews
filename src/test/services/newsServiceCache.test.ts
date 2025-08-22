@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createMockSupabaseClient } from '../utils';
 
-vi.mock('@/lib/supabaseClient', () => ({ supabase: {} }));
+const mockSupabase = createMockSupabaseClient();
+vi.mock('@/lib/supabaseClient', () => ({ supabase: mockSupabase }));
 import newsService from '@/services/newsService';
 
 describe('NewsService LRU cache', () => {
