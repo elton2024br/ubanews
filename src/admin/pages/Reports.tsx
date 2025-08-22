@@ -79,32 +79,43 @@ export const Reports: React.FC = () => {
   const loadReportData = async () => {
     try {
       setLoading(true);
-      
+
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(endDate.getDate() - parseInt(dateRange));
 
-      // Load news data
-      const { data: newsData, error: newsError } = await supabase
-        .from('admin_news')
-        .select('*')
-        .gte('created_at', startDate.toISOString());
+      const [
+        { data: statusData, error: statusError },
+        { data: categoryData, error: categoryError },
+        { data: monthData, error: monthError },
+        { data: authorData, error: authorError },
+        { data: approvalData, error: approvalError }
+      ] = await Promise.all([
+        supabase.rpc('news_status_counts', {
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString()
+        }),
+        supabase.rpc('news_by_category', {
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString()
+        }),
+        supabase.rpc('news_by_month', {
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString()
+        }),
+        supabase.rpc('author_news_counts', {
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString()
+        }),
+        supabase.rpc('approval_status_counts', {
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString()
+        })
+      ]);
 
-      if (newsError) {
-        console.error('Error loading news data:', newsError);
-        toast.error('Erro ao carregar dados de notícias');
-        return;
-      }
-
-      // Load approval data
-      const { data: approvalData, error: approvalError } = await supabase
-        .from('news_approvals')
-        .select('*')
-        .gte('created_at', startDate.toISOString());
-
-      if (approvalError) {
-        console.error('Error loading approval data:', approvalError);
-        toast.error('Erro ao carregar dados de aprovações');
+      if (statusError || categoryError || monthError || authorError || approvalError) {
+        console.error('Error loading report data:', statusError || categoryError || monthError || authorError || approvalError);
+        toast.error('Erro ao carregar dados de relatório');
         return;
       }
 
@@ -121,8 +132,14 @@ export const Reports: React.FC = () => {
         // Don't show error for audit logs as it's not critical
       }
 
-      // Process data
-      const processedData = processReportData(newsData || [], approvalData || [], auditData || []);
+      const processedData = processReportData(
+        statusData || [],
+        categoryData || [],
+        monthData || [],
+        authorData || [],
+        approvalData || [],
+        auditData || []
+      );
       setReportData(processedData);
     } catch (error) {
       console.error('Error loading report data:', error);
@@ -132,57 +149,33 @@ export const Reports: React.FC = () => {
     }
   };
 
-  const processReportData = (news: any[], approvals: any[], audits: any[]): ReportData => {
-    // Basic stats
-    const totalNews = news.length;
-    const publishedNews = news.filter(n => n.status === 'published').length;
-    const pendingNews = news.filter(n => n.status === 'pending').length;
-    const rejectedNews = news.filter(n => n.status === 'rejected').length;
-    const totalAuthors = new Set(news.map(n => n.author_name)).size;
+  const processReportData = (
+    statusData: any[],
+    categoryData: any[],
+    monthData: any[],
+    authorData: any[],
+    approvalData: any[],
+    audits: any[]
+  ): ReportData => {
+    const totalNews = statusData.reduce((sum, s) => sum + s.count, 0);
+    const publishedNews = statusData.find(s => s.status === 'published')?.count || 0;
+    const pendingNews = statusData.find(s => s.status === 'pending')?.count || 0;
+    const rejectedNews = statusData.find(s => s.status === 'rejected')?.count || 0;
 
-    // News per category
-    const categoryCount: { [key: string]: number } = {};
-    news.forEach(n => {
-      if (n.category) {
-        categoryCount[n.category] = (categoryCount[n.category] || 0) + 1;
-      }
-    });
-    const newsPerCategory = Object.entries(categoryCount)
-      .map(([category, count]) => ({ category, count }))
-      .sort((a, b) => b.count - a.count);
-
-    // News per month
-    const monthCount: { [key: string]: number } = {};
-    news.forEach(n => {
-      const month = new Date(n.created_at).toLocaleDateString('pt-BR', { 
-        year: 'numeric', 
-        month: 'short' 
-      });
-      monthCount[month] = (monthCount[month] || 0) + 1;
-    });
-    const newsPerMonth = Object.entries(monthCount)
-      .map(([month, count]) => ({ month, count }))
-      .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
-
-    // Approval stats
-    const approvalCount: { [key: string]: number } = {};
-    approvals.forEach(a => {
-      approvalCount[a.status] = (approvalCount[a.status] || 0) + 1;
-    });
-    const approvalStats = Object.entries(approvalCount)
-      .map(([status, count]) => ({ status, count }));
-
-    // Top authors
-    const authorCount: { [key: string]: number } = {};
-    news.forEach(n => {
-      authorCount[n.author_name] = (authorCount[n.author_name] || 0) + 1;
-    });
-    const topAuthors = Object.entries(authorCount)
-      .map(([author, count]) => ({ author, count }))
-      .sort((a, b) => b.count - a.count)
+    const totalAuthors = authorData.length;
+    const newsPerCategory = categoryData;
+    const newsPerMonth = monthData.map(m => ({
+      month: new Date(m.month).toLocaleDateString('pt-BR', {
+        year: 'numeric',
+        month: 'short'
+      }),
+      count: m.count
+    }));
+    const approvalStats = approvalData;
+    const topAuthors = authorData
+      .sort((a: any, b: any) => b.count - a.count)
       .slice(0, 10);
 
-    // Recent activity from audit logs
     const recentActivity = audits.map(audit => ({
       id: audit.id,
       action: audit.action || 'Ação desconhecida',
