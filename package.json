@@ -14,7 +14,9 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
-    "check": "npm run lint && npm run test:run"
+    "check": "npm run lint && npm run test:run",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -81,6 +83,9 @@
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
+    "@storybook/addon-essentials": "^8.4.4",
+    "@storybook/react": "^8.4.4",
+    "@storybook/react-vite": "^8.4.4",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "@vitest/ui": "^3.2.4",
     "autoprefixer": "^10.4.21",
@@ -96,6 +101,7 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
+    "storybook": "^8.4.4",
     "vitest": "^3.2.4"
   }
 }
