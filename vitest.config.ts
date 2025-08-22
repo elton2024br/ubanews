@@ -19,7 +19,11 @@ export default defineConfig({
         '**/*.config.*',
         'dist/',
         'build/'
-      ]
+      ],
+      lines: 90,
+      functions: 90,
+      branches: 90,
+      statements: 90
     }
   },
   resolve: {
