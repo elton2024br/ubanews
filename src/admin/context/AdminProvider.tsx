@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { User } from '@supabase/supabase-js';
+import { toast } from '@/components/ui/use-toast';
 
 interface AdminUser {
   id: string;
@@ -73,7 +73,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     }
   };
 
-  const loadAdminUser = async (email: string) => {
+  const loadAdminUser = async (email: string, attempt = 0): Promise<void> => {
     try {
       const { data, error } = await supabase
         .from('admin_users')
@@ -84,12 +84,30 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
 
       if (error) {
         console.error('Error loading admin user:', error);
+        if ((error as any).status === 500) {
+          toast({
+            title: 'Erro do servidor',
+            description: 'Não foi possível carregar os dados administrativos.',
+          });
+          if (attempt < 2) {
+            return loadAdminUser(email, attempt + 1);
+          }
+        } else {
+          toast({
+            title: 'Erro',
+            description: error.message,
+          });
+        }
         return;
       }
 
       setUser(data);
     } catch (error) {
       console.error('Error loading admin user:', error);
+      toast({
+        title: 'Erro',
+        description: 'Falha ao carregar dados administrativos.',
+      });
     }
   };
 
@@ -112,7 +130,18 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
         .eq('is_active', true)
         .single();
 
-      if (adminError || !adminUser) {
+      if (adminError) {
+        if ((adminError as any).status === 500) {
+          toast({
+            title: 'Erro do servidor',
+            description: 'Falha ao verificar usuário administrativo.',
+          });
+          return { success: false, error: 'Erro interno do servidor' };
+        }
+        return { success: false, error: 'Usuário não encontrado ou inativo' };
+      }
+
+      if (!adminUser) {
         return { success: false, error: 'Usuário não encontrado ou inativo' };
       }
 
@@ -120,10 +149,26 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       // In production, you would integrate with Supabase Auth properly
       if (password === 'admin123') {
         // Simulate successful login
-        await supabase
+        const { error: updateError } = await supabase
           .from('admin_users')
           .update({ last_login_at: new Date().toISOString() })
           .eq('id', adminUser.id);
+
+        if (updateError) {
+          console.error('Login update error:', updateError);
+          if ((updateError as any).status === 500) {
+            toast({
+              title: 'Erro do servidor',
+              description: 'Falha ao atualizar dados de login.',
+            });
+          } else {
+            toast({
+              title: 'Erro',
+              description: updateError.message,
+            });
+          }
+          return { success: false, error: 'Não foi possível completar o login' };
+        }
 
         setUser(adminUser);
         return { success: true };
@@ -132,6 +177,17 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Login error:', error);
+      if ((error as any)?.status === 500) {
+        toast({
+          title: 'Erro do servidor',
+          description: 'Falha interna ao realizar login.',
+        });
+      } else {
+        toast({
+          title: 'Erro',
+          description: 'Erro inesperado ao realizar login.',
+        });
+      }
       return { success: false, error: 'Erro interno do servidor' };
     } finally {
       setLoading(false);
