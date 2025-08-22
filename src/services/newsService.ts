@@ -106,8 +106,11 @@ class NewsService {
         query = query.eq('category', options.category);
       }
 
-      if (options.search) {
-        query = query.or(`title.ilike.%${options.search}%,content.ilike.%${options.search}%`);
+      if (options.search?.trim()) {
+        const searchText = options.search.trim();
+        query = query
+          .textSearch('title', searchText, { type: 'websearch' })
+          .textSearch('content', searchText, { type: 'websearch' });
       }
 
       if (options.limit) {
