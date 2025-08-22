@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 import { ArrowLeft, Clock, Calendar, Tag, Share2 } from 'lucide-react';
 import { NewsArticle } from '@/shared/types/news';
 import { formatDate } from '../utils/dateUtils';
@@ -111,9 +112,10 @@ export const NewsDetail: React.FC<NewsDetailProps> = ({ article, onBack }) => {
 
         {/* Conteúdo principal */}
         <div className="prose prose-lg max-w-none">
-          <div className="text-gray-800 leading-relaxed whitespace-pre-line">
-            {article.content}
-          </div>
+          <div
+            className="text-gray-800 leading-relaxed whitespace-pre-line"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.content) }}
+          />
         </div>
 
         {/* Botão de compartilhamento no final */}
