@@ -120,12 +120,13 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       // In production, you would integrate with Supabase Auth properly
       if (password === 'admin123') {
         // Simulate successful login
+        const lastLoginAt = new Date().toISOString();
         await supabase
           .from('admin_users')
-          .update({ last_login_at: new Date().toISOString() })
+          .update({ last_login_at: lastLoginAt })
           .eq('id', adminUser.id);
 
-        setUser(adminUser);
+        setUser({ ...adminUser, last_login_at: lastLoginAt });
         return { success: true };
       } else {
         return { success: false, error: 'Credenciais inválidas' };

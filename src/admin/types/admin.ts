@@ -2,13 +2,15 @@
 export interface User {
   id: string;
   email: string;
-  name: string;
+  full_name: string;
   role: 'admin' | 'columnist' | 'editor';
   avatar?: string;
   created_at: string;
   updated_at: string;
-  last_login?: string;
+  last_login_at?: string;
   is_active: boolean;
+  two_factor_enabled: boolean;
+  two_factor_secret?: string;
   permissions: Permission[];
 }
 

@@ -33,8 +33,10 @@ export type Database = {
           avatar: string | null;
           created_at: string;
           updated_at: string;
-          last_login: string | null;
+          last_login_at: string | null;
           is_active: boolean;
+          two_factor_enabled: boolean;
+          two_factor_secret: string | null;
         };
         Insert: {
           id?: string;
@@ -44,8 +46,10 @@ export type Database = {
           avatar?: string | null;
           created_at?: string;
           updated_at?: string;
-          last_login?: string | null;
+          last_login_at?: string | null;
           is_active?: boolean;
+          two_factor_enabled?: boolean;
+          two_factor_secret?: string | null;
         };
         Update: {
           id?: string;
@@ -55,8 +59,10 @@ export type Database = {
           avatar?: string | null;
           created_at?: string;
           updated_at?: string;
-          last_login?: string | null;
+          last_login_at?: string | null;
           is_active?: boolean;
+          two_factor_enabled?: boolean;
+          two_factor_secret?: string | null;
         };
       };
       admin_news: {

@@ -238,7 +238,7 @@ export const NewsList: React.FC = () => {
   const canEditNews = (newsItem: NewsItem) => {
     if (user?.role === 'admin') return true;
     if (user?.role === 'editor') return true;
-    if (user?.role === 'columnist' && newsItem.author_name === user.name) return true;
+    if (user?.role === 'columnist' && newsItem.author_name === user.full_name) return true;
     return false;
   };
 
