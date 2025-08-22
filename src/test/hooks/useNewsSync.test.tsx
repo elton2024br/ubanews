@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useNewsSync } from '@/hooks/useNewsSync';
 import { createMockNewsArticle, createMockSupabaseClient } from '../utils';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 
 // Mock Supabase
-vi.mock('@/lib/supabase', () => {
+vi.mock('@/lib/supabaseClient', () => {
   return {
     supabase: {
       channel: vi.fn(),

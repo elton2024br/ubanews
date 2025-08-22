@@ -26,7 +26,7 @@ const mockSupabaseClient = {
   })),
 };
 
-vi.mock('@/lib/supabase', () => ({
+vi.mock('@/lib/supabaseClient', () => ({
   supabase: mockSupabaseClient,
 }));
 

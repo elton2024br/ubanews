@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 import { newsArticles } from '../data/newsData';
 import { NewsArticle } from '../types/news';
 

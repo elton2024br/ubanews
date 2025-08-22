@@ -43,7 +43,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { supabase } from '../../../supabase/config';
+import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
 // Validation schema
