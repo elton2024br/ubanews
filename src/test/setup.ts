@@ -42,6 +42,28 @@ beforeAll(() => {
   // Mock scrollTo
   window.scrollTo = vi.fn();
 
+  // Mocks for ProseMirror/Tiptap which is used in RichTextEditor
+  if (typeof window.HTMLElement.prototype.getClientRects === 'undefined') {
+    window.HTMLElement.prototype.getClientRects = function() {
+      const rect = this.getBoundingClientRect();
+      return [{
+        bottom: rect.bottom,
+        height: rect.height,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        width: rect.width,
+        x: rect.x,
+        y: rect.y,
+        toJSON: () => JSON.stringify(this.getBoundingClientRect())
+      }];
+    };
+  }
+
+  if (typeof document.elementFromPoint === 'undefined') {
+    document.elementFromPoint = () => null;
+  }
+
   // Mock localStorage
   const localStorageMock = {
     getItem: vi.fn(),

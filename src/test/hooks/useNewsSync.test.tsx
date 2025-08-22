@@ -3,8 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useNewsSync } from '@/hooks/useNewsSync';
 import { createMockNewsArticle, createMockSupabaseClient } from '../utils';
 
-const mockSupabase = createMockSupabaseClient();
-vi.mock('@/lib/supabaseClient', () => ({ supabase: mockSupabase }));
+vi.mock('@/lib/supabaseClient');
 import { supabase } from '@/lib/supabaseClient';
 
 // Mock feature flags
@@ -99,7 +98,7 @@ describe('useNewsSync', () => {
       result.current.connect();
     });
     
-    expect(mockSupabase.channel).toHaveBeenCalledWith('news-updates');
+    expect(supabase.channel).toHaveBeenCalledWith('news-updates');
     expect(mockChannel.on).toHaveBeenCalledWith(
       'postgres_changes',
       {
@@ -308,7 +307,7 @@ describe('useNewsSync', () => {
       result.current.connect();
     });
     
-    expect(mockSupabase.channel).not.toHaveBeenCalled();
+    expect(supabase.channel).not.toHaveBeenCalled();
     expect(result.current.connectionStatus).toBe('disabled');
   });
 

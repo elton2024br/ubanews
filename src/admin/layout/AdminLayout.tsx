@@ -90,7 +90,7 @@ const navigation: NavigationItem[] = [
     name: 'Logs de Auditoria',
     href: '/admin/audit',
     icon: Activity,
-    allowedRoles: ['admin'],
+    allowedRoles: ['admin', 'editor'],
   },
   {
     name: 'Configurações',
@@ -115,7 +115,7 @@ export const AdminLayout: React.FC = () => {
     if (item.allowedRoles && !item.allowedRoles.includes(user?.role || 'columnist')) {
       return false;
     }
-    if (item.requiredPermission && !hasPermission(item.requiredPermission.resource, item.requiredPermission.action)) {
+    if (item.requiredPermission && !hasPermission(`${item.requiredPermission.resource}.${item.requiredPermission.action}`)) {
       return false;
     }
     return true;

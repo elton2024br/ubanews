@@ -4,33 +4,31 @@ import { usePublicNews } from '../../hooks/usePublicNews';
 import { createTestWrapper } from '../utils';
 
 // Mock dependencies
-const mockNewsService = {
-  getPublicNews: vi.fn(),
-  getRelatedNews: vi.fn(),
-};
-
-const mockFeatureFlags = {
-  isFeatureEnabled: vi.fn(),
-};
-
-const mockNewsCache = {
-  has: vi.fn(),
-  get: vi.fn(),
-  set: vi.fn(),
-  invalidatePattern: vi.fn(),
-};
-
 vi.mock('../../services/newsService', () => ({
-  default: mockNewsService,
+  default: {
+    getPublicNews: vi.fn(),
+    getRelatedNews: vi.fn(),
+  },
 }));
 
 vi.mock('../../hooks/useFeatureFlags', () => ({
-  useFeatureFlags: () => mockFeatureFlags,
+  useFeatureFlags: () => ({
+    isFeatureEnabled: vi.fn(),
+  }),
 }));
 
 vi.mock('../../hooks/useNewsCache', () => ({
-  useNewsCache: () => mockNewsCache,
+  useNewsCache: () => ({
+    has: vi.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
+    invalidatePattern: vi.fn(),
+  }),
 }));
+
+import NewsService from '../../services/newsService';
+import { useFeatureFlags } from '../../hooks/useFeatureFlags';
+import { useNewsCache } from '../../hooks/useNewsCache';
 
 describe('usePublicNews', () => {
   const mockNewsArticles = [
@@ -60,14 +58,17 @@ describe('usePublicNews', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFeatureFlags.isFeatureEnabled.mockReturnValue(true);
-    mockNewsCache.get.mockReturnValue(null);
-    mockNewsCache.has.mockReturnValue(false);
+    const { isFeatureEnabled } = useFeatureFlags();
+    vi.mocked(isFeatureEnabled).mockReturnValue(true);
+
+    const newsCache = useNewsCache();
+    vi.mocked(newsCache.get).mockReturnValue(null);
+    vi.mocked(newsCache.has).mockReturnValue(false);
   });
 
   describe('Basic functionality', () => {
     it('should fetch news on mount', async () => {
-      mockNewsService.getPublicNews.mockResolvedValue({
+      vi.mocked(NewsService.getPublicNews).mockResolvedValue({
         success: true,
         data: mockNewsArticles,
         total: 2,

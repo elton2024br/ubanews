@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
-import ProtectedRoute from '@/admin/auth/ProtectedRoute';
+import { ProtectedRoute } from '@/admin/auth/ProtectedRoute';
 import { useAdmin } from '@/admin/context/AdminProvider';
 
 vi.mock('@/admin/context/AdminProvider', () => ({

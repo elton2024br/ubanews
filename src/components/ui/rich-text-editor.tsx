@@ -7,15 +7,23 @@ interface RichTextEditorProps {
   value?: string
   onChange?: (html: string) => void
   className?: string
+  id?: string
 }
 
-export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value = '', onChange, className }) => {
+export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value = '', onChange, className, id }) => {
   const editor = useEditor({
     extensions: [StarterKit],
     content: value,
     onUpdate({ editor }) {
       onChange?.(editor.getHTML())
-    }
+    },
+    editorProps: {
+      attributes: {
+        id: id,
+        class: 'prose prose-sm max-w-none focus:outline-none',
+        'data-testid': 'rich-text-editor', // Add a test ID
+      },
+    },
   })
 
   useEffect(() => {
@@ -31,7 +39,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value = '', onCh
         className
       )}
     >
-      <EditorContent editor={editor} className="prose prose-sm max-w-none focus:outline-none" />
+      <EditorContent editor={editor} />
     </div>
   )
 }
