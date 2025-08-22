@@ -9,15 +9,34 @@ interface NewsCardProps {
   readTime: string;
   views: string;
   image?: string;
+  srcSet?: string;
+  sizes?: string;
 }
 
-const NewsCard = ({ title, summary, date, category, readTime, views, image }: NewsCardProps) => {
+const NewsCard = ({
+  title,
+  summary,
+  date,
+  category,
+  readTime,
+  views,
+  image,
+  srcSet,
+  sizes = "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
+}: NewsCardProps) => {
   return (
     <article className="bg-news-card hover:bg-news-card-hover border border-border rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg group cursor-pointer">
       {/* Image placeholder */}
       <div className="w-full h-48 bg-secondary flex items-center justify-center text-muted-foreground">
         {image ? (
-          <img src={image} alt={title} className="w-full h-full object-cover" />
+          <img
+            src={image}
+            alt={title}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            srcSet={srcSet}
+            sizes={srcSet ? sizes : undefined}
+          />
         ) : (
           <div className="text-center">
             <div className="text-4xl mb-2">📰</div>
