@@ -12,6 +12,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const Form = FormProvider
 
@@ -141,8 +142,8 @@ const FormDescription = React.forwardRef<
 FormDescription.displayName = "FormDescription"
 
 const FormMessage = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField()
   const body = error ? String(error?.message) : children
@@ -152,14 +153,17 @@ const FormMessage = React.forwardRef<
   }
 
   return (
-    <p
+    <Alert
       ref={ref}
       id={formMessageId}
-      className={cn("text-sm font-medium text-destructive", className)}
+      variant="destructive"
+      aria-live="assertive"
       {...props}
     >
-      {body}
-    </p>
+      <AlertDescription className={cn("text-sm font-medium", className)}>
+        {body}
+      </AlertDescription>
+    </Alert>
   )
 })
 FormMessage.displayName = "FormMessage"
