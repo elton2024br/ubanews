@@ -231,8 +231,16 @@ export const useServiceWorker = (): ServiceWorkerHook => {
     }
   }, [state.isSupported, state.isRegistered, setupServiceWorkerListeners]);
 
-  // Efeito para registro automático
+  // Efeito para registro automático (desabilitado em desenvolvimento)
   useEffect(() => {
+    // Não registrar automaticamente em modo de desenvolvimento para evitar conflitos com HMR
+    const isDevelopment = import.meta.env.DEV || import.meta.env.NODE_ENV === 'development';
+    
+    if (isDevelopment) {
+      console.log('[SW Hook] Service Worker registration disabled in development mode');
+      return;
+    }
+    
     if (state.isSupported && !state.isRegistered && !hasRegistered.current) {
       hasRegistered.current = true;
       register();

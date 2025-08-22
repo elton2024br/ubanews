@@ -2,8 +2,15 @@ import { Search, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { generateAriaLabel } from "@/utils/accessibility";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
+  const navigate = useNavigate();
+
+  const handleLoginClick = () => {
+    navigate('/admin/login');
+  };
+
   return (
     <header className="bg-primary text-primary-foreground">
       {/* Top notification bar */}
@@ -38,7 +45,7 @@ const Header = () => {
               />
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-primary-foreground/60" />
             </div>
-            <Button variant="secondary" size="sm">
+            <Button variant="secondary" size="sm" onClick={handleLoginClick}>
               Entrar
             </Button>
             <Button

@@ -273,7 +273,18 @@ async function handleAPIRequest(request) {
 // Network First para conteúdo dinâmico
 async function handleDynamicRequest(request) {
   try {
-    const networkResponse = await fetch(request);
+    // Verificar se a URL é válida antes de fazer fetch
+    const url = new URL(request.url);
+    
+    // Evitar fetch de recursos que sabemos que não existem
+    if (url.pathname.includes('logo-ubatuba.webp')) {
+      throw new Error('Resource not found: logo-ubatuba.webp');
+    }
+    
+    const networkResponse = await fetch(request, {
+      cache: 'no-cache',
+      mode: 'cors'
+    });
     
     if (networkResponse.ok && request.method === 'GET') {
       const cache = await caches.open(DYNAMIC_CACHE);

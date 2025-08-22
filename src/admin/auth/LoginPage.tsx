@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Loader2, Shield, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
-export const LoginPage: React.FC = () => {
+const LoginPage: React.FC = () => {
   const { user, login, loading } = useAdmin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -165,3 +165,5 @@ export const LoginPage: React.FC = () => {
     </div>
   );
 };
+
+export default LoginPage;

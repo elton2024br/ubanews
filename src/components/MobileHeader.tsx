@@ -30,6 +30,11 @@ const MobileHeader = ({ onMenuToggle }: MobileHeaderProps) => {
   const { containerRef } = useFocusManagement({ trapFocus: isMenuOpen });
   const { createButtonProps } = useButtonInteractions();
 
+  const handleLoginClick = () => {
+    navigate('/admin/login');
+    setIsMenuOpen(false); // Close mobile menu if open
+  };
+
   const handleMenuToggle = (open: boolean) => {
     setIsMenuOpen(open);
     onMenuToggle?.(open);
@@ -137,7 +142,7 @@ const MobileHeader = ({ onMenuToggle }: MobileHeaderProps) => {
                 
                 {/* Mobile-only options */}
                 <div className="pt-4 border-t border-border">
-                  <Button variant="outline" className="w-full mb-3">
+                  <Button variant="outline" className="w-full mb-3" onClick={handleLoginClick}>
                     Entrar
                   </Button>
                   <div className="flex items-center justify-between">
@@ -235,7 +240,7 @@ const MobileHeader = ({ onMenuToggle }: MobileHeaderProps) => {
             </div>
             
             {/* Desktop Login Button */}
-            <Button variant="default" size="sm" className="hidden md:inline-flex">
+            <Button variant="default" size="sm" className="hidden md:inline-flex" onClick={handleLoginClick}>
               Entrar
             </Button>
           </div>

@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { useEffect, lazy, Suspense } from "react";
 import Index from "./pages/Index";
@@ -40,12 +40,12 @@ const queryClient = new QueryClient();
 
 const App = () => {
   // Initialize service worker
-  const { register, isSupported, error } = useServiceWorker();
+  const { isSupported, error } = useServiceWorker();
   
   // Initialize resource preloading
   const { preloadCriticalResources, isLoading: preloadLoading } = useResourcePreload();
 
-  // Initialize Web Vitals monitoring, Service Worker and Resource Preloading on app start
+  // Initialize Web Vitals monitoring and Resource Preloading on app start
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Initialize Web Vitals monitoring
@@ -54,10 +54,8 @@ const App = () => {
       // Monitor resource loading performance
       monitorResourceLoading();
       
-      // Register service worker if supported
-      if (isSupported) {
-        register();
-      }
+      // Service Worker registration is handled automatically by the hook
+      // (disabled in development mode to prevent conflicts with HMR)
       
       // Preload critical resources
       preloadCriticalResources();
@@ -72,7 +70,7 @@ const App = () => {
         }
       }
     }
-  }, [register, isSupported, error, preloadCriticalResources, preloadLoading]);
+  }, [isSupported, error, preloadCriticalResources, preloadLoading]);
 
   return (
     <ErrorBoundary
@@ -100,6 +98,7 @@ const App = () => {
                 <Routes>
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Navigate to="/admin/login" replace />} />
                   <Route path="/news/:id" element={<NewsPage />} />
                   <Route path="/search" element={<SearchResultsLazy />} />
                   <Route path="/about" element={<AboutLazy />} />

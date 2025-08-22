@@ -12,24 +12,13 @@ interface CriticalResource {
 
 // Recursos críticos do UbaNews
 const CRITICAL_RESOURCES: CriticalResource[] = [
-  // Fontes críticas
-  {
-    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-    as: 'style',
-    priority: 'high'
-  },
-  // Imagens críticas (hero, logos)
-  {
-    href: '/logo-ubatuba.webp',
-    as: 'image',
-    priority: 'high'
-  },
-  // Scripts críticos para Web Vitals
-  {
-    href: '/sw.js',
-    as: 'script',
-    priority: 'high'
-  }
+  // Removido preload da fonte Inter para evitar avisos de recurso não utilizado
+  // A fonte será carregada naturalmente via CSS quando necessária
+  
+  // Removidos recursos que não são imediatamente necessários:
+  // - Inter font: carregado via CSS quando necessário
+  // - placeholder.svg: carregado apenas quando necessário
+  // - sw.js: registrado separadamente, não precisa de preload
 ];
 
 // Hook para preload de recursos críticos

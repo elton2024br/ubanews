@@ -28,7 +28,7 @@ export type Database = {
         Row: {
           id: string;
           email: string;
-          name: string;
+          full_name: string;
           role: 'admin' | 'columnist' | 'editor';
           avatar: string | null;
           created_at: string;
@@ -39,7 +39,7 @@ export type Database = {
         Insert: {
           id?: string;
           email: string;
-          name: string;
+          full_name: string;
           role: 'admin' | 'columnist' | 'editor';
           avatar?: string | null;
           created_at?: string;
@@ -50,7 +50,7 @@ export type Database = {
         Update: {
           id?: string;
           email?: string;
-          name?: string;
+          full_name?: string;
           role?: 'admin' | 'columnist' | 'editor';
           avatar?: string | null;
           created_at?: string;

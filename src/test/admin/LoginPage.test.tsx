@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '../utils';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { LoginPage } from '@/admin/auth/LoginPage';
+import LoginPage from '@/admin/auth/LoginPage';
 import { toast } from 'sonner';
 
 const mockLogin = vi.fn();
