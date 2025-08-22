@@ -43,7 +43,7 @@ class NewsService {
 
   constructor() {
     // Check if we should use dynamic data based on environment or feature flags
-    this.useDynamicData = process.env.NODE_ENV !== 'test';
+    this.useDynamicData = import.meta.env.MODE !== 'test';
   }
 
   setDynamicMode(enabled: boolean) {

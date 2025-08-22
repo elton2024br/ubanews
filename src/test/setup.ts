@@ -9,6 +9,8 @@ afterEach(() => {
 
 // Mock window.matchMedia
 beforeAll(() => {
+  // Ensure environment mode is set for services relying on import.meta.env.MODE
+  vi.stubEnv('MODE', 'test');
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation(query => ({
