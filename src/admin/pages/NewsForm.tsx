@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAdmin } from '../context/AdminProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { RichTextEditor } from '../../components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -115,6 +114,8 @@ export const NewsForm: React.FC = () => {
   const [previewMode, setPreviewMode] = useState(false);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isEditing = Boolean(id);
   const isNewNews = !isEditing;
@@ -182,6 +183,54 @@ export const NewsForm: React.FC = () => {
       navigate('/admin/news');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Apenas arquivos de imagem são permitidos');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      const fileExt = file.name.split('.').pop();
+      const filePath = `news-${Date.now()}.${fileExt}`;
+
+      const { error } = await supabase.storage
+        .from('news-images')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const {
+        data: { publicUrl }
+      } = supabase.storage.from('news-images').getPublicUrl(filePath);
+
+      form.setValue('featured_image_url', publicUrl, {
+        shouldValidate: true
+      });
+
+      toast.success('Imagem enviada com sucesso');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Erro ao enviar imagem');
+      form.setError('featured_image_url', {
+        message: 'Erro ao enviar imagem'
+      });
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -605,7 +654,7 @@ export const NewsForm: React.FC = () => {
                     name="featured_image_url"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>URL da Imagem</FormLabel>
+                        <FormLabel>Imagem de Destaque</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="https://exemplo.com/imagem.jpg"
@@ -613,8 +662,32 @@ export const NewsForm: React.FC = () => {
                           />
                         </FormControl>
                         <FormDescription>
-                          URL da imagem de destaque
+                          Informe a URL ou envie uma imagem (máx. 5MB)
                         </FormDescription>
+                        <div className="mt-2">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            ref={fileInputRef}
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingImage}
+                          >
+                            {uploadingImage ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                                Enviando...
+                              </>
+                            ) : (
+                              'Escolher arquivo'
+                            )}
+                          </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
