@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient, RealtimeChannel } from '@supabase/supabase-js';
-import { NewsArticle } from '@/types/news';
+import { NewsArticle } from '@/shared/types/news';
 import { useFeatureFlags } from './useFeatureFlags';
 
 interface NewsUpdate {

@@ -4,7 +4,7 @@ import { NewsDetail } from '../components/NewsDetail';
 import { getNewsById } from '../data/newsData';
 import newsService from '../services/newsService';
 import { useDynamicData, useMigrationMetrics } from '../hooks/useFeatureFlags';
-import { NewsArticle } from '../shared/types/news';
+import { NewsArticle } from '@/shared/types/news';
 import MobileHeader from '../components/MobileHeader';
 import Footer from '../components/Footer';
 

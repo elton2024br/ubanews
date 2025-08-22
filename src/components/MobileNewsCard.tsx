@@ -3,7 +3,7 @@ import { Clock, Eye, Heart, Share2, Bookmark, ChevronRight } from 'lucide-react'
 import { RippleEffect, PulseOnClick } from './AnimatedTransitions';
 import { useButtonInteractions, useCardInteractions } from '../hooks/useMicrointeractions';
 import { cn } from '../lib/utils';
-import type { NewsCardProps, NewsInteractionState } from '../types/news';
+import type { NewsCardProps, NewsInteractionState } from '@/shared/types/news';
 import type { InteractiveComponentProps } from '../types/components';
 
 interface MobileNewsCardProps extends NewsCardProps, InteractiveComponentProps {

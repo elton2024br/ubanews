@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Clock, Calendar, Tag, Share2 } from 'lucide-react';
-import { NewsArticle } from '../shared/types/news';
+import { NewsArticle } from '@/shared/types/news';
 import { formatDate } from '../utils/dateUtils';
 import { OptimizedImage } from './OptimizedImage';
 

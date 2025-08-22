@@ -9,21 +9,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RefreshCw, Filter, TrendingUp, Search, X, Grid, List, ChevronDown, Calendar, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { NewsArticle } from '../shared/types/news';
+import {
+  NewsArticle,
+  NewsCategory,
+  NewsSortBy,
+  NewsVariant,
+  NewsFilters,
+  NewsLoadingState,
+  NewsCardProps
+} from '@/shared/types/news';
 import { newsArticles, getNewsByCategory, getFeaturedNews, searchNews } from '../data/newsData';
 import { formatRelativeDate } from '../utils/dateUtils';
 import { usePublicNews } from '../hooks/usePublicNews';
 import { useDynamicData, useMigrationMetrics } from '../hooks/useFeatureFlags';
 import { useButtonInteractions, useCardInteractions } from '../hooks/useMicrointeractions';
 import { useVirtualization } from '../hooks/useVirtualization';
-import type { 
-  NewsCategory, 
-  NewsSortBy, 
-  NewsVariant, 
-  NewsFilters,
-  NewsLoadingState,
-  NewsCardProps
-} from '../types/news';
 import type {
   NewsFeedProps,
   PullToRefreshState,
