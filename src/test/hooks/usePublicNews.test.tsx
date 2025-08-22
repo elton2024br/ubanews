@@ -14,13 +14,14 @@ const mockFeatureFlags = {
 };
 
 const mockNewsCache = {
+  has: vi.fn(),
   get: vi.fn(),
   set: vi.fn(),
   invalidatePattern: vi.fn(),
 };
 
 vi.mock('../../services/newsService', () => ({
-  newsService: mockNewsService,
+  default: mockNewsService,
 }));
 
 vi.mock('../../hooks/useFeatureFlags', () => ({
@@ -61,6 +62,7 @@ describe('usePublicNews', () => {
     vi.clearAllMocks();
     mockFeatureFlags.isFeatureEnabled.mockReturnValue(true);
     mockNewsCache.get.mockReturnValue(null);
+    mockNewsCache.has.mockReturnValue(false);
   });
 
   describe('Basic functionality', () => {
@@ -169,6 +171,65 @@ describe('usePublicNews', () => {
       });
 
       expect(mockNewsService.getPublicNews).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Cache logic', () => {
+    it('should generate cache key with offset 0', async () => {
+      mockNewsService.getPublicNews.mockResolvedValue({
+        success: true,
+        data: mockNewsArticles,
+        total: 2,
+        hasMore: false,
+      });
+
+      renderHook(() => usePublicNews(), { wrapper: createTestWrapper() });
+
+      const key =
+        'news-public-limit=10&offset=0&sortBy=created_at&sortOrder=desc';
+
+      await waitFor(() => {
+        expect(mockNewsCache.set).toHaveBeenCalledWith(key, mockNewsArticles);
+      });
+
+      expect(mockNewsCache.has).toHaveBeenCalledWith(key);
+    });
+
+    it('should update cache key when loading more', async () => {
+      mockNewsService.getPublicNews.mockResolvedValue({
+        success: true,
+        data: [mockNewsArticles[0]],
+        total: 2,
+        hasMore: true,
+      });
+
+      const { result } = renderHook(() => usePublicNews({ limit: 1 }), {
+        wrapper: createTestWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.data).toEqual([mockNewsArticles[0]]);
+      });
+
+      mockNewsService.getPublicNews.mockResolvedValue({
+        success: true,
+        data: [mockNewsArticles[1]],
+        total: 2,
+        hasMore: false,
+      });
+
+      await result.current.loadMore();
+
+      const key =
+        'news-public-limit=1&offset=1&sortBy=created_at&sortOrder=desc';
+
+      await waitFor(() => {
+        expect(result.current.data).toEqual(mockNewsArticles);
+        expect(mockNewsCache.set).toHaveBeenLastCalledWith(
+          key,
+          mockNewsArticles
+        );
+      });
     });
   });
 
