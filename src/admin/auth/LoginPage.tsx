@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAdmin } from '../context/AdminProvider';
 import { Button } from '../../components/ui/button';
@@ -13,6 +13,7 @@ const LoginPage: React.FC = () => {
   const { user, login, loading } = useAdmin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -28,7 +29,7 @@ const LoginPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const result = await login(email, password);
+      const result = await login(email, password, otp);
       if (result.success) {
         toast.success('Login realizado com sucesso!');
       } else {
@@ -125,6 +126,18 @@ const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="otp">Código 2FA</Label>
+                  <Input
+                    id="otp"
+                    type="text"
+                    placeholder="000000"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full"
@@ -141,14 +154,6 @@ const LoginPage: React.FC = () => {
                 </Button>
               </form>
 
-              <div className="mt-6 text-center text-sm text-gray-600">
-                <p>Credenciais de teste:</p>
-                <p className="font-mono text-xs mt-1">
-                  admin@ubanews.com / admin123<br />
-                  editor@ubanews.com / admin123<br />
-                  colunista@ubanews.com / admin123
-                </p>
-              </div>
             </CardContent>
           </Card>
         </div>

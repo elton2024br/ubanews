@@ -9,6 +9,8 @@ export interface User {
   updated_at: string;
   last_login?: string;
   is_active: boolean;
+  two_factor_enabled: boolean;
+  two_factor_secret?: string;
   permissions: Permission[];
 }
 
@@ -103,7 +105,7 @@ export interface AdminContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, otp?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   hasPermission: (resource: string, action: string) => boolean;
 }

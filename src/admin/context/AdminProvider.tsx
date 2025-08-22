@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/use-toast';
+import { createHmac } from 'crypto';
 
 interface AdminUser {
   id: string;
@@ -18,7 +20,11 @@ interface AdminUser {
 interface AdminContextType {
   user: AdminUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (
+    email: string,
+    password: string,
+    otp?: string
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
   hasRole: (role: string | string[]) => boolean;
@@ -42,28 +48,38 @@ interface AdminProviderProps {
 export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Check if user is already logged in
     checkUser();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        await loadAdminUser(session.user.email!);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          startSessionTimer(session);
+          await loadAdminUser(session.user.email!);
+        } else if (event === 'SIGNED_OUT') {
+          if (sessionTimeoutRef.current) {
+            clearTimeout(sessionTimeoutRef.current);
+          }
+          setUser(null);
+        }
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     return () => subscription.unsubscribe();
   }, []);
 
   const checkUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session }
+      } = await supabase.auth.getSession();
       if (session?.user?.email) {
+        startSessionTimer(session);
         await loadAdminUser(session.user.email);
       }
     } catch (error) {
@@ -71,6 +87,48 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const startSessionTimer = (session: Session) => {
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current);
+    }
+    const expiresIn = session.expires_at ? session.expires_at * 1000 - Date.now() : 0;
+    if (expiresIn > 0) {
+      sessionTimeoutRef.current = setTimeout(async () => {
+        await logout();
+        toast({
+          title: 'Sessão expirada',
+          description: 'Faça login novamente.',
+        });
+      }, expiresIn);
+    }
+  };
+
+  const verifyTOTP = (secret: string, token: string): boolean => {
+    const base32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = '';
+    const cleaned = secret.replace(/=+$/, '').toUpperCase();
+    for (const char of cleaned) {
+      const val = base32.indexOf(char);
+      if (val === -1) return false;
+      bits += val.toString(2).padStart(5, '0');
+    }
+    const bytes = bits.match(/.{1,8}/g)?.map((b) => parseInt(b.padEnd(8, '0'), 2)) || [];
+    const key = Buffer.from(bytes);
+    const epoch = Math.floor(Date.now() / 1000 / 30);
+    const buffer = Buffer.alloc(8);
+    buffer.writeUInt32BE(0, 0);
+    buffer.writeUInt32BE(epoch, 4);
+    const hmac = createHmac('sha1', key).update(buffer).digest();
+    const offset = hmac[hmac.length - 1] & 0xf;
+    const code =
+      ((hmac[offset] & 0x7f) << 24) |
+      ((hmac[offset + 1] & 0xff) << 16) |
+      ((hmac[offset + 2] & 0xff) << 8) |
+      (hmac[offset + 3] & 0xff);
+    const otp = (code % 1_000_000).toString().padStart(6, '0');
+    return otp === token;
   };
 
   const loadAdminUser = async (email: string, attempt = 0): Promise<void> => {
@@ -118,11 +176,22 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     }
   };
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (
+    email: string,
+    password: string,
+    otp?: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       setLoading(true);
+      const {
+        data: authData,
+        error: authError
+      } = await supabase.auth.signInWithPassword({ email, password });
 
-      // First check if user exists in admin_users table
+      if (authError || !authData.session || !authData.user) {
+        return { success: false, error: 'Credenciais inválidas' };
+      }
+
       const { data: adminUser, error: adminError } = await supabase
         .from('admin_users')
         .select('*')
@@ -130,51 +199,48 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
         .eq('is_active', true)
         .single();
 
-      if (adminError) {
-        if ((adminError as any).status === 500) {
+      if (adminError || !adminUser) {
+        await supabase.auth.signOut();
+        return { success: false, error: 'Usuário não encontrado ou inativo' };
+      }
+
+      if (adminUser.two_factor_enabled) {
+        if (!otp) {
+          await supabase.auth.signOut();
+          return { success: false, error: 'Código de verificação necessário' };
+        }
+        const isValid = verifyTOTP(adminUser.two_factor_secret || '', otp);
+        if (!isValid) {
+          await supabase.auth.signOut();
+          return { success: false, error: 'Código de verificação inválido' };
+        }
+      }
+
+      const { error: updateError } = await supabase
+        .from('admin_users')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', adminUser.id);
+
+      if (updateError) {
+        console.error('Login update error:', updateError);
+        if ((updateError as any).status === 500) {
           toast({
             title: 'Erro do servidor',
-            description: 'Falha ao verificar usuário administrativo.',
+            description: 'Falha ao atualizar dados de login.',
           });
-          return { success: false, error: 'Erro interno do servidor' };
+        } else {
+          toast({
+            title: 'Erro',
+            description: updateError.message,
+          });
         }
-        return { success: false, error: 'Usuário não encontrado ou inativo' };
+        await supabase.auth.signOut();
+        return { success: false, error: 'Não foi possível completar o login' };
       }
 
-      if (!adminUser) {
-        return { success: false, error: 'Usuário não encontrado ou inativo' };
-      }
-
-      // For demo purposes, we'll create a simple auth mechanism
-      // In production, you would integrate with Supabase Auth properly
-      if (password === 'admin123') {
-        // Simulate successful login
-        const { error: updateError } = await supabase
-          .from('admin_users')
-          .update({ last_login_at: new Date().toISOString() })
-          .eq('id', adminUser.id);
-
-        if (updateError) {
-          console.error('Login update error:', updateError);
-          if ((updateError as any).status === 500) {
-            toast({
-              title: 'Erro do servidor',
-              description: 'Falha ao atualizar dados de login.',
-            });
-          } else {
-            toast({
-              title: 'Erro',
-              description: updateError.message,
-            });
-          }
-          return { success: false, error: 'Não foi possível completar o login' };
-        }
-
-        setUser(adminUser);
-        return { success: true };
-      } else {
-        return { success: false, error: 'Credenciais inválidas' };
-      }
+      setUser(adminUser);
+      startSessionTimer(authData.session);
+      return { success: true };
     } catch (error) {
       console.error('Login error:', error);
       if ((error as any)?.status === 500) {
@@ -196,6 +262,10 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+      }
+      await supabase.auth.signOut();
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
