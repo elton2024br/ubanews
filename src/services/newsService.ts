@@ -57,6 +57,11 @@ class NewsService {
     this.useDynamicData = enabled;
   }
 
+  onFeatureFlagChange(enabled: boolean) {
+    this.setDynamicMode(enabled);
+    this.clearCache();
+  }
+
   private getCacheKey(options: NewsServiceOptions = {}): string {
     return JSON.stringify(options);
   }

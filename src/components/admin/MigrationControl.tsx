@@ -1,7 +1,7 @@
 import React from 'react';
 import { Settings, Database, Zap, BarChart3, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useDynamicData, useProgressiveMigration, useMigrationMetrics, useFeatureFlags } from '../../hooks/useFeatureFlags';
-import newsService from '../../services/newsService';
+import NewsService from '../../services/newsService';
 
 /**
  * Componente para controle da migração progressiva
@@ -31,14 +31,14 @@ export function MigrationControl() {
     if (canMigrate) {
       await startMigration();
       // Notifica o serviço sobre a mudança
-      NewsService.onFeatureFlagChange();
+      NewsService.onFeatureFlagChange(useDynamic);
     }
   };
 
   const handleRollback = () => {
     if (canRollback) {
       rollbackMigration();
-      NewsService.onFeatureFlagChange();
+      NewsService.onFeatureFlagChange(useDynamic);
     }
   };
 
