@@ -59,6 +59,7 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Storybook
 
 ## How can I deploy this project?
 
@@ -88,4 +89,20 @@ See [docs/architecture.md](docs/architecture.md) for a high-level diagram of the
 ## Contributing
 
 Guidelines for commits, linting, and tests are available in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Storybook
+
+This project exposes its Tailwind + Radix UI component library through [Storybook](https://storybook.js.org/).
+
+Run the documentation site locally:
+
+```sh
+npm run storybook
+```
+
+Build the static documentation output:
+
+```sh
+npm run build-storybook
+```
 
