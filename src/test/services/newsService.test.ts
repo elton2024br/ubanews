@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import newsService from '@/services/newsService';
+const NewsService: any = newsService;
 import { createMockNewsArticle, createMockNewsArticles, mockFeatureFlags } from '../utils';
 import { featureFlags } from '@/lib/featureFlags';
 
@@ -14,16 +15,19 @@ vi.mock('@/data/newsData', () => ({
 }));
 
 // Mock Supabase
+const fromMock = {
+  select: vi.fn().mockReturnThis(),
+  eq: vi.fn().mockReturnThis(),
+  order: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  range: vi.fn().mockReturnThis(),
+  single: vi.fn(),
+  update: vi.fn().mockReturnThis(),
+};
+
 const mockSupabaseClient = {
-  from: vi.fn(() => ({
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    range: vi.fn().mockReturnThis(),
-    single: vi.fn(),
-    update: vi.fn().mockReturnThis(),
-  })),
+  from: vi.fn(() => fromMock),
+  rpc: vi.fn(),
 };
 
 vi.mock('@/lib/supabaseClient', () => ({
@@ -157,21 +161,20 @@ describe('NewsService', () => {
       expect(result.fallbackUsed).toBe(true);
     });
 
-    it('should increment views for dynamic data', async () => {
-      const mockArticle = createMockNewsArticle({ id: '1', views: 5 });
-      mockSupabaseClient.from().single.mockResolvedValue({
-        data: mockArticle,
-        error: null,
-      });
-      mockSupabaseClient.from().update.mockResolvedValue({
-        data: { ...mockArticle, views: 6 },
-        error: null,
-      });
+    it('should increment views on consecutive calls', async () => {
+      mockSupabaseClient.rpc
+        .mockResolvedValueOnce({ data: { views: 6 }, error: null })
+        .mockResolvedValueOnce({ data: { views: 7 }, error: null });
 
-      const result = await NewsService.incrementViews('1');
-      
-      expect(result.success).toBe(true);
-      expect(mockSupabaseClient.from().update).toHaveBeenCalled();
+      const first = await NewsService.incrementViews('1');
+      const second = await NewsService.incrementViews('1');
+
+      expect(first).toBe(6);
+      expect(second).toBe(7);
+      expect(mockSupabaseClient.rpc).toHaveBeenCalledTimes(2);
+      expect(mockSupabaseClient.rpc).toHaveBeenCalledWith('increment_views', {
+        article_id: '1',
+      });
     });
   });
 
