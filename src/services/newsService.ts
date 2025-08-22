@@ -137,7 +137,7 @@ class NewsService {
     try {
       let query = supabase
         .from('news')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('status', 'published')
         .order('published_at', { ascending: false });
 
@@ -147,9 +147,7 @@ class NewsService {
 
       if (options.search?.trim()) {
         const searchText = options.search.trim();
-        query = query
-          .textSearch('title', searchText, { type: 'websearch' })
-          .textSearch('content', searchText, { type: 'websearch' });
+        query = query.or(`title.ilike.%${searchText}%,content.ilike.%${searchText}%`);
       }
 
       if (options.limit) {
