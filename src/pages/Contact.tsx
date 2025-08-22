@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MobileHeader from '../components/MobileHeader';
 import Footer from '../components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,8 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { LiveAlert } from '@/components/ui/live-alert';
 import { Mail, Phone, MapPin, Send, Clock, CheckCircle, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface FormData {
   name: string;
@@ -27,6 +27,14 @@ const Contact: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (feedback) {
+      const timer = setTimeout(() => setFeedback(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [feedback]);
 
   const contactInfo = [
     {
@@ -83,7 +91,7 @@ const Contact: React.FC = () => {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error("Por favor, corrija os erros no formulário");
+      setFeedback({ type: 'error', message: 'Por favor, corrija os erros no formulário' });
       return;
     }
 
@@ -92,9 +100,10 @@ const Contact: React.FC = () => {
     try {
       // Simular envio do formulário
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast.success("Mensagem enviada com sucesso!", {
-        description: "Responderemos em até 24 horas."
+
+      setFeedback({
+        type: 'success',
+        message: 'Mensagem enviada com sucesso! Responderemos em até 24 horas.',
       });
 
       setFormData({
@@ -105,8 +114,9 @@ const Contact: React.FC = () => {
       });
       setErrors({});
     } catch (error) {
-      toast.error("Erro ao enviar mensagem", {
-        description: "Por favor, tente novamente ou use outro meio de contato."
+      setFeedback({
+        type: 'error',
+        message: 'Erro ao enviar mensagem. Por favor, tente novamente ou use outro meio de contato.',
       });
     } finally {
       setIsSubmitting(false);
@@ -134,11 +144,13 @@ const Contact: React.FC = () => {
               Fale Conosco
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Sua opinião é fundamental para melhorar nosso jornalismo. 
+              Sua opinião é fundamental para melhorar nosso jornalismo.
               Estamos aqui para ouvir e ajudar.
             </p>
           </div>
         </section>
+
+        <LiveAlert message={feedback?.message ?? ''} type={feedback?.type ?? null} />
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Contact Form */}
