@@ -1,6 +1,31 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../../../supabase/config';
-import { User } from '@supabase/supabase-js';
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_TIME_MS = 5 * 60 * 1000; // 5 minutes
+
+const isStrongPassword = (password: string): boolean => {
+  const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+  return strongRegex.test(password);
+};
+
+interface LoginAttempts {
+  count: number;
+  lockedUntil: number;
+}
+
+const getLoginAttempts = (): LoginAttempts => {
+  try {
+    const data = localStorage.getItem('adminLoginAttempts');
+    return data ? JSON.parse(data) : { count: 0, lockedUntil: 0 };
+  } catch {
+    return { count: 0, lockedUntil: 0 };
+  }
+};
+
+const saveLoginAttempts = (attempts: LoginAttempts) => {
+  localStorage.setItem('adminLoginAttempts', JSON.stringify(attempts));
+};
 
 interface AdminUser {
   id: string;
@@ -62,7 +87,17 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
 
   const checkUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        const stored = localStorage.getItem('supabaseSession');
+        if (stored) {
+          const tokens = JSON.parse(stored);
+          const { data } = await supabase.auth.setSession(tokens);
+          session = data.session;
+        }
+      }
+
       if (session?.user?.email) {
         await loadAdminUser(session.user.email);
       }
@@ -104,7 +139,36 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     try {
       setLoading(true);
 
-      // First check if user exists in admin_users table
+      const attempts = getLoginAttempts();
+      const now = Date.now();
+      if (attempts.lockedUntil && now < attempts.lockedUntil) {
+        return { success: false, error: 'Muitas tentativas. Tente novamente mais tarde.' };
+      }
+
+      if (!isStrongPassword(password)) {
+        return { success: false, error: 'Senha muito fraca.' };
+      }
+
+      const { data: { session }, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError || !session) {
+        const newAttempts = {
+          count: attempts.count + 1,
+          lockedUntil: attempts.lockedUntil,
+        };
+        if (newAttempts.count >= MAX_LOGIN_ATTEMPTS) {
+          newAttempts.count = 0;
+          newAttempts.lockedUntil = now + LOCK_TIME_MS;
+        }
+        saveLoginAttempts(newAttempts);
+        return { success: false, error: 'Credenciais inválidas' };
+      }
+
+      saveLoginAttempts({ count: 0, lockedUntil: 0 });
+
       const { data: adminUser, error: adminError } = await supabase
         .from('admin_users')
         .select('*')
@@ -113,23 +177,25 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
         .single();
 
       if (adminError || !adminUser) {
+        await supabase.auth.signOut();
         return { success: false, error: 'Usuário não encontrado ou inativo' };
       }
 
-      // For demo purposes, we'll create a simple auth mechanism
-      // In production, you would integrate with Supabase Auth properly
-      if (password === 'admin123') {
-        // Simulate successful login
-        await supabase
-          .from('admin_users')
-          .update({ last_login_at: new Date().toISOString() })
-          .eq('id', adminUser.id);
+      await supabase
+        .from('admin_users')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', adminUser.id);
 
-        setUser(adminUser);
-        return { success: true };
-      } else {
-        return { success: false, error: 'Credenciais inválidas' };
-      }
+      localStorage.setItem(
+        'supabaseSession',
+        JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        })
+      );
+
+      setUser(adminUser);
+      return { success: true };
     } catch (error) {
       console.error('Login error:', error);
       return { success: false, error: 'Erro interno do servidor' };
@@ -140,6 +206,8 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
+      await supabase.auth.signOut();
+      localStorage.removeItem('supabaseSession');
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
