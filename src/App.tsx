@@ -23,6 +23,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { initWebVitals, monitorResourceLoading } from "./utils/webVitals";
 import { useServiceWorker } from "./hooks/useServiceWorker";
 import { useResourcePreload } from "./hooks/useResourcePreload";
+import MobileQuickBar from "./components/MobileQuickBar";
 
 // Admin imports
 import { AdminProvider } from "./admin/context/AdminProvider";
@@ -151,6 +152,8 @@ const App = () => {
               <WebVitalsDashboard />
               {/* Service Worker Manager - handles updates and network status */}
               <ServiceWorkerManager />
+              {/* Mobile Quick Action Bar */}
+              <MobileQuickBar />
             </BrowserRouter>
           </TooltipProvider>
         </ThemeProvider>

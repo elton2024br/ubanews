@@ -72,30 +72,30 @@ export const NewsDetail: React.FC<NewsDetailProps> = ({ article, onBack }) => {
       </div>
 
       {/* Conteúdo do artigo */}
-      <div className="px-4 py-6 max-w-4xl mx-auto">
+      <div className="px-4 py-8 max-w-4xl mx-auto">
         {/* Título */}
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 leading-tight">
+        <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">
           {article.title}
         </h1>
 
         {/* Metadados */}
-        <div className="flex flex-wrap items-center gap-4 mb-6 text-sm text-gray-600">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-8 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
             <Calendar size={16} />
             <span>{formatDate(article.date)}</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Clock size={16} />
             <span>{article.readTime} min de leitura</span>
           </div>
         </div>
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-3 mb-8">
           {article.tags.map((tag, index) => (
             <span
               key={index}
-              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium"
             >
               <Tag size={12} />
               {tag}
@@ -104,14 +104,14 @@ export const NewsDetail: React.FC<NewsDetailProps> = ({ article, onBack }) => {
         </div>
 
         {/* Legenda da imagem */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500">
+        <div className="mb-8 p-4 bg-gray-50 rounded-lg border-l-4 border-blue-500">
           <p className="text-sm text-gray-700 italic">
             {article.image.caption}
           </p>
         </div>
 
         {/* Conteúdo principal */}
-        <div className="prose prose-lg max-w-none">
+        <div className="prose prose-lg max-w-none prose-p:my-6 prose-headings:my-8">
           <div
             className="text-gray-800 leading-relaxed whitespace-pre-line"
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.content) }}
@@ -119,7 +119,7 @@ export const NewsDetail: React.FC<NewsDetailProps> = ({ article, onBack }) => {
         </div>
 
         {/* Botão de compartilhamento no final */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        <div className="mt-12 pt-8 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">
               Gostou desta notícia? Compartilhe com seus amigos!

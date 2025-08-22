@@ -186,25 +186,25 @@ const MobileNewsCardComponent: React.FC<MobileNewsCardProps> = ({
 
       {/* Content */}
       <div className={cn(
-        'p-4 flex-1',
+        'p-5 flex-1', // Increased padding for more breathing room
         variant === 'compact' && 'p-0'
       )}>
         <h3 className={cn(
           'font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors',
-          variant === 'compact' ? 'text-sm' : 'text-base mb-2'
+          variant === 'compact' ? 'text-sm' : 'text-lg mb-3' // Increased font size and margin
         )}>
           {title}
         </h3>
         
         {variant !== 'compact' && (
-          <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+          <p className="text-gray-600 text-sm line-clamp-2 mb-4">
             {excerpt}
           </p>
         )}
         
         {/* Tags */}
         {tags && tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
+          <div className="flex flex-wrap gap-2 mb-4">
             {tags.slice(0, 3).map((tag, index) => (
               <span 
                 key={index}
@@ -218,12 +218,12 @@ const MobileNewsCardComponent: React.FC<MobileNewsCardProps> = ({
         
         {/* Meta Information */}
         <div className="flex items-center justify-between text-xs text-gray-500">
-          <div className="flex items-center space-x-3">
-            <span className="flex items-center space-x-1">
+          <div className="flex items-center space-x-4">
+            <span className="flex items-center space-x-1.5">
               <Clock className="w-3 h-3" aria-hidden="true" />
               <span>{readTime}</span>
             </span>
-            <span className="flex items-center space-x-1">
+            <span className="flex items-center space-x-1.5">
               <Eye className="w-3 h-3" aria-hidden="true" />
               <span>{interactionState.viewCount}</span>
             </span>
@@ -239,8 +239,8 @@ const MobileNewsCardComponent: React.FC<MobileNewsCardProps> = ({
         
         {/* Action Buttons */}
         {showInteractions && (
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center space-x-3">
               <RippleEffect
                 onClick={handleLikeClick}
                 className="inline-block rounded-md"

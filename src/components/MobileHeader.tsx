@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, Menu, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Separator } from '@/components/ui/separator';
 import { MobileThemeToggle } from './ThemeToggle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import SkipLinks from './SkipLinks';
@@ -104,47 +105,45 @@ const MobileHeader = ({ onMenuToggle }: MobileHeaderProps) => {
               className="w-[280px] sm:w-[350px]"
               ref={containerRef}
             >
-              <nav 
-                className="flex flex-col space-y-4 mt-6"
+              <nav
+                className="flex flex-col h-full"
                 role="navigation"
                 aria-label="Menu principal"
               >
-                <a 
-                  href="#" 
-                  className="text-lg font-medium hover:text-primary transition-colors py-2 border-b border-border"
-                >
-                  Início
-                </a>
-                <a 
-                  href="#" 
-                  className="text-lg font-medium hover:text-primary transition-colors py-2 border-b border-border"
-                >
-                  Sugestões
-                </a>
-                <a 
-                  href="#" 
-                  className="text-lg font-medium hover:text-primary transition-colors py-2 border-b border-border"
-                >
-                  Arquivo Semanal
-                </a>
-                <a 
-                  href="#" 
-                  className="text-lg font-medium hover:text-primary transition-colors py-2 border-b border-border"
-                >
-                  Categorias
-                </a>
-                <a 
-                  href="#" 
-                  className="text-lg font-medium hover:text-primary transition-colors py-2 border-b border-border"
-                >
-                  Bairros
-                </a>
-                
-                {/* Mobile-only options */}
-                <div className="pt-4 border-t border-border">
-                  <Button variant="outline" className="w-full mb-3" onClick={handleLoginClick}>
-                    Entrar
+                {/* 1st Level: Main Actions */}
+                <div className="p-4 space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input placeholder="Buscar no site..." className="pl-10" />
+                  </div>
+                  <Button variant="outline" className="w-full" onClick={handleLoginClick}>
+                    Login / Painel
                   </Button>
+                </div>
+
+                <Separator />
+
+                {/* 2nd Level: Categories */}
+                <div className="flex-1 p-4 space-y-2">
+                  <span className="text-sm font-semibold text-muted-foreground px-2">Categorias</span>
+                  <Link to="/categories/politica" className="block text-lg font-medium hover:text-primary transition-colors py-2 px-2 rounded-md hover:bg-muted">Política</Link>
+                  <Link to="/categories/cidade" className="block text-lg font-medium hover:text-primary transition-colors py-2 px-2 rounded-md hover:bg-muted">Cidade</Link>
+                  <Link to="/categories/policia" className="block text-lg font-medium hover:text-primary transition-colors py-2 px-2 rounded-md hover:bg-muted">Polícia</Link>
+                  <Link to="/categories/esportes" className="block text-lg font-medium hover:text-primary transition-colors py-2 px-2 rounded-md hover:bg-muted">Esportes</Link>
+                  <Link to="/categories/cultura" className="block text-lg font-medium hover:text-primary transition-colors py-2 px-2 rounded-md hover:bg-muted">Cultura</Link>
+                </div>
+
+                <Separator />
+
+                {/* 3rd Level: Institutional Pages */}
+                <div className="p-4 space-y-2">
+                    <Link to="/about" className="block text-base text-muted-foreground hover:text-primary transition-colors py-1 px-2 rounded-md hover:bg-muted">Sobre Nós</Link>
+                    <Link to="/contact" className="block text-base text-muted-foreground hover:text-primary transition-colors py-1 px-2 rounded-md hover:bg-muted">Contato</Link>
+                    <Link to="/privacy" className="block text-base text-muted-foreground hover:text-primary transition-colors py-1 px-2 rounded-md hover:bg-muted">Política de Privacidade</Link>
+                </div>
+
+                {/* 4th Level: Settings */}
+                <div className="mt-auto p-4 border-t border-border">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Tema</span>
                     <MobileThemeToggle />

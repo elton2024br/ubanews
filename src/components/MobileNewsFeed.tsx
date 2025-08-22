@@ -488,7 +488,7 @@ export const MobileNewsFeed: React.FC<MobileNewsFeedProps> = ({
   const renderNewsGrid = useMemo(() => {
     if (variant === 'list') {
       return (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {filteredNews.map((news) => (
             <MobileNewsCard
               key={news.id}
@@ -506,7 +506,7 @@ export const MobileNewsFeed: React.FC<MobileNewsFeedProps> = ({
       const regularArticles = displayedNews.filter(news => !news.featured);
       
       return (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {featuredNews.length > 0 && (
             <MobileNewsCard
               {...convertToCardProps(featuredNews[0])}
@@ -514,7 +514,7 @@ export const MobileNewsFeed: React.FC<MobileNewsFeedProps> = ({
               className="w-full"
             />
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {regularNews.map((news) => (
               <MobileNewsCard
                 key={news.id}
@@ -530,7 +530,7 @@ export const MobileNewsFeed: React.FC<MobileNewsFeedProps> = ({
     // Default grid layout
     return (
       <div className={`
-        grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6
+        grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8
         transition-all duration-500 ease-in-out
         ${loadingState.initialLoading ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}
       `}>
