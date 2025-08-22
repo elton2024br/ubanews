@@ -45,6 +45,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
+import useCategories from '@/hooks/useCategories';
 
 const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim();
 
@@ -89,20 +90,6 @@ interface NewsItem {
   published_at?: string;
 }
 
-const categories = [
-  'Política',
-  'Economia',
-  'Esportes',
-  'Cultura',
-  'Saúde',
-  'Educação',
-  'Tecnologia',
-  'Meio Ambiente',
-  'Turismo',
-  'Segurança',
-  'Infraestrutura',
-  'Eventos'
-];
 
 export const NewsForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -119,6 +106,7 @@ export const NewsForm: React.FC = () => {
 
   const isEditing = Boolean(id);
   const isNewNews = !isEditing;
+  const { categories } = useCategories();
 
   const form = useForm<NewsFormData>({
     resolver: zodResolver(newsSchema),
@@ -600,8 +588,8 @@ export const NewsForm: React.FC = () => {
                           </FormControl>
                           <SelectContent>
                             {categories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
+                              <SelectItem key={category.id} value={category.name}>
+                                {category.name}
                               </SelectItem>
                             ))}
                           </SelectContent>

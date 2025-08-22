@@ -9,107 +9,48 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePublicNews } from '../hooks/usePublicNews';
 import { NewsArticle } from '@/shared/types/news';
-import { Newspaper, TrendingUp, MapPin, Users, Building, Heart, Leaf, Car, GraduationCap, AlertTriangle } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import useCategories from '@/hooks/useCategories';
 
 interface Category {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   icon: React.ComponentType<{ className?: string }>;
-  color: string;
+  color: string | null;
   count?: number;
 }
-
-const categories: Category[] = [
-  {
-    id: 'politica',
-    name: 'Política',
-    description: 'Notícias sobre política local, estadual e federal',
-    icon: Newspaper,
-    color: 'bg-blue-500'
-  },
-  {
-    id: 'economia',
-    name: 'Economia',
-    description: 'Negócios, mercado, finanças e desenvolvimento econômico',
-    icon: TrendingUp,
-    color: 'bg-green-500'
-  },
-  {
-    id: 'infraestrutura',
-    name: 'Infraestrutura',
-    description: 'Obras, transporte, energia e desenvolvimento urbano',
-    icon: Building,
-    color: 'bg-orange-500'
-  },
-  {
-    id: 'saude',
-    name: 'Saúde',
-    description: 'Notícias sobre saúde pública, hospitais e bem-estar',
-    icon: Heart,
-    color: 'bg-red-500'
-  },
-  {
-    id: 'educacao',
-    name: 'Educação',
-    description: 'Escolas, universidades, políticas educacionais e eventos',
-    icon: GraduationCap,
-    color: 'bg-purple-500'
-  },
-  {
-    id: 'meio-ambiente',
-    name: 'Meio Ambiente',
-    description: 'Natureza, sustentabilidade, clima e preservação',
-    icon: Leaf,
-    color: 'bg-emerald-500'
-  },
-  {
-    id: 'turismo',
-    name: 'Turismo',
-    description: 'Eventos, atrações, hospedagem e economia turística',
-    icon: MapPin,
-    color: 'bg-teal-500'
-  },
-  {
-    id: 'seguranca',
-    name: 'Segurança',
-    description: 'Polícia, crimes, trânsito e segurança pública',
-    icon: AlertTriangle,
-    color: 'bg-yellow-500'
-  },
-  {
-    id: 'esportes',
-    name: 'Esportes',
-    description: 'Futebol, competições, atletas e eventos esportivos',
-    icon: Car,
-    color: 'bg-indigo-500'
-  },
-  {
-    id: 'comunidade',
-    name: 'Comunidade',
-    description: 'Eventos locais, associações, cultura e sociedade',
-    icon: Users,
-    color: 'bg-pink-500'
-  }
-];
 
 const Categories: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const { news, loading, error } = usePublicNews();
+  const { categories: rawCategories } = useCategories();
+
+  const categories = useMemo<Category[]>(() => {
+    return rawCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      description: cat.description,
+      icon:
+        (LucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[cat.icon || ''] ||
+        LucideIcons.Newspaper,
+      color: cat.color,
+    }));
+  }, [rawCategories]);
 
   // Filtrar notícias por categoria
   const categorizedNews = useMemo(() => {
     if (!news) return {};
-    
+
     const categorized: Record<string, NewsArticle[]> = {};
     categories.forEach(cat => {
-      categorized[cat.id] = news.filter(item => 
+      categorized[cat.id] = news.filter(item =>
         item.category?.toLowerCase() === cat.name.toLowerCase()
       );
     });
-    
+
     return categorized;
-  }, [news]);
+  }, [news, categories]);
 
   // Contar notícias por categoria
   const categoryCounts = useMemo(() => {
@@ -118,7 +59,7 @@ const Categories: React.FC = () => {
       counts[cat.id] = categorizedNews[cat.id]?.length || 0;
     });
     return counts;
-  }, [categorizedNews]);
+  }, [categorizedNews, categories]);
 
   // Notícias mais recentes (todas as categorias)
   const latestNews = useMemo(() => {
@@ -154,7 +95,7 @@ const Categories: React.FC = () => {
     if (items.length === 0) {
       return (
         <div className="text-center py-12">
-          <Newspaper className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <LucideIcons.Newspaper className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-semibold mb-2">Nenhuma notícia encontrada</h3>
           <p className="text-muted-foreground">
             Não há notícias disponíveis nesta categoria no momento.
@@ -258,27 +199,30 @@ const Categories: React.FC = () => {
             </div>
           </TabsContent>
 
-          {categories.map((category) => (
-            <TabsContent key={category.id} value={category.id} className="space-y-6">
-              <div>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className={`p-2 rounded-full ${category.color} text-white`}>
-                    <category.icon className="w-5 h-5" />
+          {categories.map((category) => {
+            const Icon = category.icon;
+            return (
+              <TabsContent key={category.id} value={category.id} className="space-y-6">
+                <div>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className={`p-2 rounded-full ${category.color} text-white`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold">{category.name}</h2>
+                      <p className="text-muted-foreground">{category.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold">{category.name}</h2>
-                    <p className="text-muted-foreground">{category.description}</p>
-                  </div>
+                  {renderNewsGrid(categorizedNews[category.id] || [])}
                 </div>
-                {renderNewsGrid(categorizedNews[category.id] || [])}
-              </div>
-            </TabsContent>
-          ))}
+              </TabsContent>
+            );
+          })}
         </Tabs>
 
         {error && (
           <div className="text-center py-12">
-            <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+            <LucideIcons.AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
             <h3 className="text-lg font-semibold mb-2">Erro ao carregar notícias</h3>
             <p className="text-muted-foreground">
               Não foi possível carregar as notícias. Tente novamente mais tarde.

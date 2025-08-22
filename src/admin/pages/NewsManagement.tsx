@@ -38,6 +38,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import useCategories from '@/hooks/useCategories';
 
 // Validation Schema
 const newsSchema = z.object({
@@ -88,18 +89,7 @@ const NewsManagement: React.FC = () => {
     }
   });
 
-  const categories = [
-    'Política',
-    'Economia',
-    'Esportes',
-    'Cultura',
-    'Tecnologia',
-    'Saúde',
-    'Educação',
-    'Meio Ambiente',
-    'Turismo',
-    'Geral'
-  ];
+  const { categories: categoryOptions } = useCategories();
 
   const fetchNews = async () => {
     try {
@@ -346,9 +336,9 @@ const NewsManagement: React.FC = () => {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {categories.map(category => (
-                      <SelectItem key={category} value={category}>
-                        {category}
+                    {categoryOptions.map(category => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -517,9 +507,9 @@ const NewsManagement: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                  {categoryOptions.map(category => (
+                    <SelectItem key={category.id} value={category.name}>
+                      {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
