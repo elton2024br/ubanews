@@ -4,17 +4,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import Index from "./pages/Index";
 import NewsPage from "./pages/NewsPage";
-import { 
-  SearchResultsLazy, 
-  NotFoundLazy, 
-  AboutLazy, 
-  ContactLazy, 
-  CategoriesLazy, 
-  PrivacyPolicyLazy, 
-  TermsOfUseLazy 
+import {
+  SearchResultsLazy,
+  NotFoundLazy,
+  AboutLazy,
+  ContactLazy,
+  CategoriesLazy,
+  PrivacyPolicyLazy,
+  TermsOfUseLazy,
+  LoadingSpinner
 } from "./components/LazyComponents";
 import WebVitalsDashboard from "./components/WebVitalsDashboard";
 import ServiceWorkerManager from "./components/ServiceWorkerUpdate";
@@ -25,14 +26,15 @@ import { useResourcePreload } from "./hooks/useResourcePreload";
 
 // Admin imports
 import { AdminProvider } from "./admin/context/AdminProvider";
-import { LoginPage } from "./admin/auth/LoginPage";
 import { ProtectedRoute } from "./admin/auth/ProtectedRoute";
-import { AdminLayout } from "./admin/layout/AdminLayout";
-import { Dashboard } from "./admin/pages/Dashboard";
-import { NewsList } from "./admin/pages/NewsList";
-import { NewsForm } from "./admin/pages/NewsForm";
-import { Approvals } from "./admin/pages/Approvals";
-import { Reports } from "./admin/pages/Reports";
+
+const LoginPage = lazy(() => import("./admin/auth/LoginPage"));
+const AdminLayout = lazy(() => import("./admin/layout/AdminLayout"));
+const Dashboard = lazy(() => import("./admin/pages/Dashboard"));
+const NewsList = lazy(() => import("./admin/pages/NewsList"));
+const NewsForm = lazy(() => import("./admin/pages/NewsForm"));
+const Approvals = lazy(() => import("./admin/pages/Approvals"));
+const Reports = lazy(() => import("./admin/pages/Reports"));
 
 const queryClient = new QueryClient();
 
@@ -107,30 +109,40 @@ const App = () => {
                   <Route path="/terms" element={<TermsOfUseLazy />} />
                   
                   {/* Admin routes */}
-                  <Route path="/admin/login" element={
-                    <AdminProvider>
-                      <LoginPage />
-                    </AdminProvider>
-                  } />
-                  
-                  <Route path="/admin/*" element={
-                    <AdminProvider>
-                      <ProtectedRoute>
-                        <AdminLayout>
-                          <Routes>
-                            <Route path="/" element={<Dashboard />} />
-                            <Route path="/dashboard" element={<Dashboard />} />
-                            <Route path="/news" element={<NewsList />} />
-                            <Route path="/news/new" element={<NewsForm />} />
-                            <Route path="/news/edit/:id" element={<NewsForm />} />
-                            <Route path="/approvals" element={<Approvals />} />
-                            <Route path="/reports" element={<Reports />} />
-                            <Route path="*" element={<NotFoundLazy />} />
-                          </Routes>
-                        </AdminLayout>
-                      </ProtectedRoute>
-                    </AdminProvider>
-                  } />
+                  <Route
+                    path="/admin/login"
+                    element={
+                      <AdminProvider>
+                        <Suspense fallback={<LoadingSpinner message="Carregando..." />}>
+                          <LoginPage />
+                        </Suspense>
+                      </AdminProvider>
+                    }
+                  />
+
+                  <Route
+                    path="/admin/*"
+                    element={
+                      <AdminProvider>
+                        <ProtectedRoute>
+                          <Suspense fallback={<LoadingSpinner message="Carregando painel..." />}>
+                            <AdminLayout>
+                              <Routes>
+                                <Route path="/" element={<Dashboard />} />
+                                <Route path="/dashboard" element={<Dashboard />} />
+                                <Route path="/news" element={<NewsList />} />
+                                <Route path="/news/new" element={<NewsForm />} />
+                                <Route path="/news/edit/:id" element={<NewsForm />} />
+                                <Route path="/approvals" element={<Approvals />} />
+                                <Route path="/reports" element={<Reports />} />
+                                <Route path="*" element={<NotFoundLazy />} />
+                              </Routes>
+                            </AdminLayout>
+                          </Suspense>
+                        </ProtectedRoute>
+                      </AdminProvider>
+                    }
+                  />
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFoundLazy />} />
