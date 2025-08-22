@@ -65,6 +65,29 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/0618b2c6-61f2-4963-86c2-477715e1c918) and click on Share -> Publish.
 
+## Testing
+
+Run the unit test suite:
+
+```sh
+npm test
+```
+
+Generate a coverage report:
+
+```sh
+npm run test:coverage
+```
+
+## Local deployment
+
+To create and preview a production build locally:
+
+```sh
+npm run build
+npm run preview
+```
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
