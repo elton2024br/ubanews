@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { useEffect, lazy, Suspense } from "react";
@@ -35,8 +36,6 @@ const NewsList = lazy(() => import("./admin/pages/NewsList"));
 const NewsForm = lazy(() => import("./admin/pages/NewsForm"));
 const Approvals = lazy(() => import("./admin/pages/Approvals"));
 const Reports = lazy(() => import("./admin/pages/Reports"));
-
-const queryClient = new QueryClient();
 
 const App = () => {
   // Initialize service worker

@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/lib/supabaseClient';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNews } from '@/hooks/useNews';
+import { QUERY_KEYS } from '@/lib/react-query';
 import { NewsArticle } from '@/shared/types/news';
 import { Newspaper, TrendingUp, MapPin, Users, Building, Heart, Leaf, Car, GraduationCap, AlertTriangle } from 'lucide-react';
 
@@ -94,38 +96,15 @@ const categories: Category[] = [
 
 const Categories: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [newsByCategory, setNewsByCategory] = useState<Record<string, NewsArticle[]>>({});
-  const [loadingCategories, setLoadingCategories] = useState<Record<string, boolean>>({});
-  const [errorCategories, setErrorCategories] = useState<Record<string, string | null>>({});
-
-  const fetchNews = async (categoryId: string) => {
-    setLoadingCategories(prev => ({ ...prev, [categoryId]: true }));
-    setErrorCategories(prev => ({ ...prev, [categoryId]: null }));
-    const { data, error } = await supabase
-      .from('admin_news')
-      .select('*')
-      .eq('category', categoryId);
-
-    if (error) {
-      setErrorCategories(prev => ({ ...prev, [categoryId]: error.message }));
-    } else if (data) {
-      setNewsByCategory(prev => ({ ...prev, [categoryId]: data as NewsArticle[] }));
-    }
-
-    setLoadingCategories(prev => ({ ...prev, [categoryId]: false }));
-  };
+  const queryClient = useQueryClient();
+  const { data = [], isLoading, error } = useNews(selectedCategory);
 
   const handleCategorySelect = (categoryId: string) => {
     setSelectedCategory(categoryId);
-    if (!newsByCategory[categoryId]) {
-      fetchNews(categoryId);
-    }
   };
 
-  const renderNewsGrid = (categoryId: string) => {
-    const items = newsByCategory[categoryId] || [];
-    const isLoading = loadingCategories[categoryId];
-    const error = errorCategories[categoryId];
+  const renderNewsGrid = () => {
+    const items = data as NewsArticle[];
 
     if (isLoading) {
       return (
@@ -146,7 +125,7 @@ const Categories: React.FC = () => {
         <div className="text-center py-12">
           <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
           <h3 className="text-lg font-semibold mb-2">Erro ao carregar notícias</h3>
-          <p className="text-muted-foreground">{error}</p>
+          <p className="text-muted-foreground">{error.message}</p>
         </div>
       );
     }
@@ -200,7 +179,8 @@ const Categories: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {categories.map((category) => {
                   const Icon = category.icon;
-                  const count = newsByCategory[category.id]?.length || 0;
+                  const cached = queryClient.getQueryData<NewsArticle[]>(QUERY_KEYS.news.category(category.id));
+                  const count = cached?.length ?? 0;
 
                   return (
                     <Button
@@ -241,7 +221,7 @@ const Categories: React.FC = () => {
                       <p className="text-muted-foreground">{category.description}</p>
                     </div>
                   </div>
-                  {renderNewsGrid(selectedCategory)}
+                  {renderNewsGrid()}
                 </>
               );
             })()}
