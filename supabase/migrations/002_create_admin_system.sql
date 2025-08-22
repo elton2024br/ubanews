@@ -271,16 +271,6 @@ CREATE POLICY "Users can view versions of accessible news" ON news_versions
         )
     );
 
--- Inserir usuário administrador padrão (senha: admin123)
-INSERT INTO admin_users (email, full_name, role, is_active, two_factor_enabled)
-VALUES ('admin@ubanews.com', 'Administrador Sistema', 'admin', true, false)
-ON CONFLICT (email) DO NOTHING;
-
--- Inserir dados de exemplo para desenvolvimento
-INSERT INTO admin_users (email, full_name, role, is_active) VALUES
-('editor@ubanews.com', 'Editor Chefe', 'editor', true),
-('colunista@ubanews.com', 'João Colunista', 'columnist', true)
-ON CONFLICT (email) DO NOTHING;
 
 -- Comentários para documentação
 COMMENT ON TABLE admin_users IS 'Usuários do sistema administrativo';
