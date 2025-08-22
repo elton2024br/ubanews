@@ -31,11 +31,14 @@ describe('LoginPage', () => {
     fireEvent.change(screen.getByLabelText(/Senha/i), {
       target: { value: 'senha' }
     });
+    fireEvent.change(screen.getByLabelText(/Código 2FA/i), {
+      target: { value: '123456' }
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'senha');
+      expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'senha', '123456');
     });
 
     expect(toast.success).toHaveBeenCalled();
@@ -53,11 +56,14 @@ describe('LoginPage', () => {
     fireEvent.change(screen.getByLabelText(/Senha/i), {
       target: { value: 'errada' }
     });
+    fireEvent.change(screen.getByLabelText(/Código 2FA/i), {
+      target: { value: '000000' }
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'errada');
+      expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'errada', '000000');
     });
 
     expect(toast.error).toHaveBeenCalled();

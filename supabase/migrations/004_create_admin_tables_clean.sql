@@ -209,14 +209,6 @@ GRANT ALL PRIVILEGES ON news_approvals TO authenticated;
 GRANT SELECT ON news_versions TO anon, authenticated;
 GRANT ALL PRIVILEGES ON news_versions TO authenticated;
 
--- Inserir usuários de exemplo
-INSERT INTO admin_users (email, full_name, role, is_active, two_factor_enabled)
-VALUES 
-    ('admin@ubanews.com', 'Administrador Sistema', 'admin', true, false),
-    ('editor@ubanews.com', 'Editor Chefe', 'editor', true, false),
-    ('colunista@ubanews.com', 'João Colunista', 'columnist', true, false)
-ON CONFLICT (email) DO NOTHING;
-
 -- Comentários para documentação
 COMMENT ON TABLE admin_users IS 'Usuários do sistema administrativo';
 COMMENT ON TABLE admin_news IS 'Notícias gerenciadas pelo sistema administrativo';
