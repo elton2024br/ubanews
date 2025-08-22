@@ -1,22 +1,18 @@
-import { supabase } from '../lib/supabase';
 import { newsArticles } from '../data/newsData';
-import { NewsArticle } from '../types/news';
+import type { NewsArticle } from '../types/news';
+import CacheService from './cacheService';
+import newsRepository, { NewsQueryOptions } from './newsRepository';
+import { featureFlags } from '../lib/featureFlags';
 
-interface NewsServiceOptions {
-  limit?: number;
-  offset?: number;
-  category?: string;
-  search?: string;
-  sortBy?: 'date' | 'views' | 'title';
-  sortOrder?: 'asc' | 'desc';
-}
-
-interface NewsServiceResult {
+export interface NewsServiceResult {
   success: boolean;
   data: NewsArticle[];
   total: number;
   hasMore: boolean;
+  source?: 'supabase' | 'static' | 'cache';
   error?: string;
+  fallbackUsed?: boolean;
+  pagination?: { limit?: number; offset?: number };
 }
 
 interface TtlMetric {
@@ -34,7 +30,7 @@ interface NewsServiceStats {
 }
 
 class NewsService {
-  private cache = new Map<string, { data: NewsArticle[]; timestamp: number; ttl: number }>();
+  private cacheManager = new CacheService<NewsArticle[]>();
   private stats: NewsServiceStats = {
     totalRequests: 0,
     cacheHits: 0,
@@ -44,167 +40,81 @@ class NewsService {
     ttlMetrics: {},
   };
   private responseTimes: number[] = [];
-  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
-  private readonly MAX_CACHE_SIZE = 100;
-  private useDynamicData = false;
+  private readonly DEFAULT_TTL = 5 * 60 * 1000;
 
-  constructor() {
-    // Check if we should use dynamic data based on environment or feature flags
-    this.useDynamicData = import.meta.env.MODE !== 'test';
+  // expose cache for tests
+  get cache() {
+    return this.cacheManager.cache;
   }
 
-  setDynamicMode(enabled: boolean) {
-    this.useDynamicData = enabled;
+  get MAX_CACHE_SIZE() {
+    return this.cacheManager.maxSize;
   }
 
-  private getCacheKey(options: NewsServiceOptions = {}): string {
+  set MAX_CACHE_SIZE(value: number) {
+    this.cacheManager.maxSize = value;
+  }
+
+  private getCacheKey(options: NewsQueryOptions = {}): string {
     return JSON.stringify(options);
   }
 
-  private isValidCacheEntry(entry: { data: NewsArticle[]; timestamp: number; ttl: number }): boolean {
-    return Date.now() - entry.timestamp < entry.ttl;
-  }
-
-  private calculateTTL(options: NewsServiceOptions, data: NewsArticle[]): number {
+  private calculateTTL(options: NewsQueryOptions, data: NewsArticle[]): number {
     let ttl = this.DEFAULT_TTL;
 
     if (options.category) {
       const category = options.category.toLowerCase();
       if (['breaking', 'sports'].includes(category)) {
-        ttl = 60 * 1000; // 1 minute for volatile categories
+        ttl = 60 * 1000;
       } else {
-        ttl = 10 * 60 * 1000; // 10 minutes for more stable content
+        ttl = 10 * 60 * 1000;
       }
     }
 
-    const averageViews = data.reduce((sum, item) => sum + (item.views || 0), 0) / (data.length || 1);
-    if (averageViews > 1000) {
-      ttl = Math.min(ttl, 2 * 60 * 1000); // High access volume shortens TTL
+    const avgViews = data.reduce((sum, item) => sum + (item.views || 0), 0) / (data.length || 1);
+    if (avgViews > 1000) {
+      ttl = Math.min(ttl, 2 * 60 * 1000);
     }
 
     return ttl;
   }
 
-  private addToCache(key: string, data: NewsArticle[], options: NewsServiceOptions = {}) {
-    // Implement LRU-like behavior
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    }
-
-    if (this.cache.size >= this.MAX_CACHE_SIZE) {
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
-    }
-
-    const ttl = this.calculateTTL(options, data);
-
-    const metricKey = options.category || 'general';
-    const metric = this.stats.ttlMetrics[metricKey] || { count: 0, totalTTL: 0 };
-    metric.count++;
-    metric.totalTTL += ttl;
-    this.stats.ttlMetrics[metricKey] = metric;
-
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl,
-    });
-  }
-
-  private updateStats(responseTime: number, fromCache: boolean, hasError: boolean = false) {
+  private updateStats(responseTime: number, fromCache: boolean, hasError = false): void {
     this.stats.totalRequests++;
-    
     if (fromCache) {
       this.stats.cacheHits++;
     } else {
       this.stats.cacheMisses++;
     }
-
-    if (hasError) {
-      this.stats.errorCount++;
-    }
-
+    if (hasError) this.stats.errorCount++;
     this.responseTimes.push(responseTime);
-    if (this.responseTimes.length > 100) {
-      this.responseTimes.shift();
-    }
-
-    this.stats.averageResponseTime = 
-      this.responseTimes.reduce((sum, time) => sum + time, 0) / this.responseTimes.length;
+    if (this.responseTimes.length > 100) this.responseTimes.shift();
+    this.stats.averageResponseTime =
+      this.responseTimes.reduce((sum, t) => sum + t, 0) / this.responseTimes.length;
   }
 
-  private async fetchFromSupabase(options: NewsServiceOptions = {}): Promise<NewsServiceResult> {
-    try {
-      let query = supabase
-        .from('news')
-        .select('*')
-        .eq('status', 'published')
-        .order('published_at', { ascending: false });
+  private getFromStaticData(options: NewsQueryOptions = {}): NewsServiceResult {
+    let data = [...newsArticles];
 
-      if (options.category) {
-        query = query.eq('category', options.category);
-      }
-
-      if (options.search?.trim()) {
-        const searchText = options.search.trim();
-        query = query
-          .textSearch('title', searchText, { type: 'websearch' })
-          .textSearch('content', searchText, { type: 'websearch' });
-      }
-
-      if (options.limit) {
-        query = query.limit(options.limit);
-      }
-
-      if (options.offset) {
-        query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
-      }
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return {
-        success: true,
-        data: data || [],
-        total: count || 0,
-        hasMore: (options.offset || 0) + (data?.length || 0) < (count || 0),
-      };
-    } catch (error) {
-      console.error('Supabase fetch error:', error);
-      throw error;
-    }
-  }
-
-  private getFromStaticData(options: NewsServiceOptions = {}): NewsServiceResult {
-    let filteredData = [...newsArticles];
-
-    // Apply category filter
     if (options.category) {
-      filteredData = filteredData.filter(article => article.category === options.category);
+      data = data.filter(a => a.category === options.category);
     }
 
-    // Apply search filter
     if (options.search) {
-      const searchLower = options.search.toLowerCase();
-      filteredData = filteredData.filter(article => 
-        article.title.toLowerCase().includes(searchLower) ||
-        article.content.toLowerCase().includes(searchLower)
+      const term = options.search.toLowerCase();
+      data = data.filter(
+        a => a.title.toLowerCase().includes(term) || a.content.toLowerCase().includes(term)
       );
     }
 
-    // Apply sorting
     if (options.sortBy) {
-      filteredData.sort((a, b) => {
-        let aValue: number | string;
-        let bValue: number | string;
-
+      data.sort((a, b) => {
+        let aValue: number | string = '';
+        let bValue: number | string = '';
         switch (options.sortBy) {
           case 'date':
-            aValue = new Date(a.publishedAt).getTime();
-            bValue = new Date(b.publishedAt).getTime();
+            aValue = new Date((a as any).publishedAt || a.date).getTime();
+            bValue = new Date((b as any).publishedAt || b.date).getTime();
             break;
           case 'views':
             aValue = a.views || 0;
@@ -214,82 +124,86 @@ class NewsService {
             aValue = a.title;
             bValue = b.title;
             break;
-          default:
-            return 0;
         }
-
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          const comparison = aValue.localeCompare(bValue);
-          return options.sortOrder === 'asc' ? comparison : -comparison;
-        }
-
-        const comparison = (aValue as number) - (bValue as number);
-        return options.sortOrder === 'asc' ? comparison : -comparison;
+        if (aValue < bValue) return options.sortOrder === 'asc' ? -1 : 1;
+        if (aValue > bValue) return options.sortOrder === 'asc' ? 1 : -1;
+        return 0;
       });
     }
 
-    // Apply pagination
-    const offset = options.offset || 0;
-    const limit = options.limit || filteredData.length;
-    const paginatedData = filteredData.slice(offset, offset + limit);
+    const total = data.length;
+    if (options.offset !== undefined || options.limit !== undefined) {
+      const start = options.offset || 0;
+      const end = start + (options.limit || total);
+      data = data.slice(start, end);
+    }
 
     return {
       success: true,
-      data: paginatedData,
-      total: filteredData.length,
-      hasMore: offset + paginatedData.length < filteredData.length,
+      data,
+      total,
+      hasMore: (options.offset || 0) + data.length < total,
+      source: 'static',
+      pagination: { limit: options.limit, offset: options.offset },
     };
   }
 
-  async getPublicNews(options: NewsServiceOptions = {}): Promise<NewsServiceResult> {
-    const startTime = Date.now();
-    const cacheKey = this.getCacheKey(options);
+  async getPublicNews(options: NewsQueryOptions = {}): Promise<NewsServiceResult> {
+    const start = Date.now();
+    const key = this.getCacheKey(options);
+
+    const cached = this.cacheManager.get(key);
+    if (cached) {
+      const responseTime = Date.now() - start;
+      this.updateStats(responseTime, true);
+      return {
+        success: true,
+        data: cached,
+        total: cached.length,
+        hasMore: false,
+        source: 'cache',
+        pagination: { limit: options.limit, offset: options.offset },
+      };
+    }
+
+    const dynamic = featureFlags.getFlag('USE_DYNAMIC_DATA');
 
     try {
-      // Check cache first
-      const cachedEntry = this.cache.get(cacheKey);
-      if (cachedEntry && this.isValidCacheEntry(cachedEntry)) {
-        // Move the accessed item to the end to mark it as recently used
-        this.cache.delete(cacheKey);
-        this.cache.set(cacheKey, cachedEntry);
-
-        const responseTime = Date.now() - startTime;
-        this.updateStats(responseTime, true);
-        return {
-          success: true,
-          data: cachedEntry.data,
-          total: cachedEntry.data.length,
-          hasMore: false, // Cache doesn't store pagination info
-        };
-      }
-
       let result: NewsServiceResult;
-
-      if (this.useDynamicData) {
+      if (dynamic) {
         try {
-          result = await this.fetchFromSupabase(options);
-        } catch (error) {
-          console.warn('Falling back to static data due to Supabase error:', error);
-          result = this.getFromStaticData(options);
+          const repoResult = await newsRepository.getPublicNews(options);
+          result = {
+            success: true,
+            data: repoResult.data,
+            total: repoResult.total,
+            hasMore: repoResult.hasMore,
+            source: 'supabase',
+            pagination: { limit: options.limit, offset: options.offset },
+          };
+        } catch (err) {
+          console.warn('Falling back to static data:', err);
+          result = { ...this.getFromStaticData(options), fallbackUsed: true };
         }
       } else {
         result = this.getFromStaticData(options);
       }
 
-      // Cache the result
-      if (result.success) {
-        this.addToCache(cacheKey, result.data, options);
-      }
+      const ttl = this.calculateTTL(options, result.data);
+      const metricKey = options.category || 'general';
+      const metric = this.stats.ttlMetrics[metricKey] || { count: 0, totalTTL: 0 };
+      metric.count++;
+      metric.totalTTL += ttl;
+      this.stats.ttlMetrics[metricKey] = metric;
+      this.cacheManager.set(key, result.data, ttl);
 
-      const responseTime = Date.now() - startTime;
-      this.updateStats(responseTime, false, !result.success);
+      const responseTime = Date.now() - start;
+      this.updateStats(responseTime, false);
 
       return result;
     } catch (error) {
-      const responseTime = Date.now() - startTime;
+      const responseTime = Date.now() - start;
       this.updateStats(responseTime, false, true);
-      
-      console.error('NewsService error:', error);
       return {
         success: false,
         data: [],
@@ -301,137 +215,101 @@ class NewsService {
   }
 
   async getNewsById(id: string): Promise<NewsArticle | null> {
-    const startTime = Date.now();
-
+    const start = Date.now();
+    const dynamic = featureFlags.getFlag('USE_DYNAMIC_DATA');
     try {
-      if (this.useDynamicData) {
+      let article: NewsArticle | null;
+      if (dynamic) {
         try {
-          const { data, error } = await supabase
-            .from('news')
-            .select('*')
-            .eq('id', id)
-            .eq('status', 'published')
-            .single();
-
-          if (error) {
-            throw new Error(error.message);
-          }
-
-          // Increment view count
-          if (data) {
-            await supabase
-              .from('news')
-              .update({ views: (data.views || 0) + 1 })
-              .eq('id', id);
-            
-            data.views = (data.views || 0) + 1;
-          }
-
-          const responseTime = Date.now() - startTime;
-          this.updateStats(responseTime, false);
-
-          return data;
-        } catch (error) {
-          console.warn('Falling back to static data for single article:', error);
-          // Fall back to static data
-          const article = newsArticles.find(article => article.id === id);
-          const responseTime = Date.now() - startTime;
-          this.updateStats(responseTime, false);
-          return article || null;
+          article = await newsRepository.getNewsById(id);
+        } catch (err) {
+          console.warn('Falling back to static data for single article:', err);
+          article = newsArticles.find(a => a.id === id) || null;
         }
       } else {
-        const article = newsArticles.find(article => article.id === id);
-        const responseTime = Date.now() - startTime;
-        this.updateStats(responseTime, false);
-        return article || null;
+        article = newsArticles.find(a => a.id === id) || null;
       }
-    } catch (error) {
-      const responseTime = Date.now() - startTime;
+      const responseTime = Date.now() - start;
+      this.updateStats(responseTime, false);
+      return article;
+    } catch (err) {
+      const responseTime = Date.now() - start;
       this.updateStats(responseTime, false, true);
-      console.error('Error fetching news by ID:', error);
+      console.error('Error fetching news by ID:', err);
       return null;
     }
   }
 
-  async getRelatedNews(articleId: string, limit: number = 3): Promise<NewsArticle[]> {
+  async getRelatedNews(articleId: string, limit = 3): Promise<NewsArticle[]> {
     try {
-      // Start fetching the current article immediately
-      const currentArticlePromise = this.getNewsById(articleId);
-
-      // Try to determine category from static data to start related news fetch in parallel
-      const staticArticle = newsArticles.find(article => article.id === articleId);
-      let relatedNewsPromise: Promise<NewsServiceResult>;
-
-      if (staticArticle) {
-        relatedNewsPromise = this.getPublicNews({
-          category: staticArticle.category,
-          limit: limit + 1,
-        });
-      } else {
-        relatedNewsPromise = currentArticlePromise.then(article => {
-          if (!article) {
-            return { success: true, data: [], total: 0, hasMore: false } as NewsServiceResult;
-          }
-          return this.getPublicNews({ category: article.category, limit: limit + 1 });
-        });
-      }
-
-      const [currentArticle, result] = await Promise.all([currentArticlePromise, relatedNewsPromise]);
-
-      if (!currentArticle) return [];
-
-      return result.data
-        .filter(article => article.id !== articleId)
-        .slice(0, limit);
-    } catch (error) {
-      console.error('Error fetching related news:', error);
+      const current = await this.getNewsById(articleId);
+      if (!current) return [];
+      const result = await this.getPublicNews({ category: current.category, limit: limit + 1 });
+      return result.data.filter(a => a.id !== articleId).slice(0, limit);
+    } catch (err) {
+      console.error('Error fetching related news:', err);
       return [];
     }
   }
 
-  getStats(): NewsServiceStats {
-    return { ...this.stats, ttlMetrics: { ...this.stats.ttlMetrics } };
+  async getFeaturedNews(): Promise<NewsServiceResult> {
+    const result = await this.getPublicNews();
+    return { ...result, data: result.data.filter(a => (a as any).isFeatured || (a as any).featured) };
   }
 
-  clearCache(): void {
-    this.cache.clear();
-  }
-
-  invalidateCache(pattern?: string): void {
-    if (!pattern) {
-      this.clearCache();
-      return;
-    }
-
-    for (const [key] of this.cache) {
-      if (key.includes(pattern)) {
-        this.cache.delete(key);
-      }
-    }
-  }
-
-  async incrementViews(id: string): Promise<boolean> {
-    try {
-      if (this.useDynamicData) {
-        const { error } = await supabase
-          .from('news')
-          .update({ views: supabase.sql('views + 1') })
-          .eq('id', id);
-        
-        return !error;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error incrementing views:', error);
-      return false;
-    }
+  async getUrgentNews(): Promise<NewsServiceResult> {
+    const result = await this.getPublicNews();
+    return {
+      ...result,
+      data: result.data.filter(
+        a => (a as any).isUrgent || (a as any).urgent || (a.tags && a.tags.includes('urgent'))
+      ),
+    };
   }
 
   getCacheSize(): number {
-    return this.cache.size;
+    return this.cacheManager.size();
+  }
+
+  clearCache(): void {
+    this.cacheManager.clear();
+  }
+
+  invalidateCache(pattern?: string): void {
+    this.cacheManager.invalidate(pattern);
+  }
+
+  invalidateCacheByCategory(category: string): void {
+    this.invalidateCache(category);
+  }
+
+  getCacheStats() {
+    return { size: this.getCacheSize() };
+  }
+
+  getServiceStats() {
+    return {
+      cache: this.getCacheStats(),
+      requests: {
+        total: this.stats.totalRequests,
+        cacheHits: this.stats.cacheHits,
+        cacheMisses: this.stats.cacheMisses,
+      },
+      errors: { total: this.stats.errorCount },
+      performance: { averageResponseTime: this.stats.averageResponseTime },
+    };
+  }
+
+  async incrementViews(id: string): Promise<boolean> {
+    if (!featureFlags.getFlag('USE_DYNAMIC_DATA')) return false;
+    try {
+      return await newsRepository.incrementViews(id);
+    } catch (err) {
+      console.error('Error incrementing views:', err);
+      return false;
+    }
   }
 }
 
-// Export singleton instance
 const newsService = new NewsService();
 export default newsService;
