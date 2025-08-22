@@ -191,12 +191,14 @@ export const MobileNewsFeed: React.FC<MobileNewsFeedProps> = ({
     error,
     hasMore,
     refresh,
-    loadMore
+    fetchMore
   } = usePaginatedData({
     initialData: newsSource,
-    loadMore: shouldUseDynamic ? loadMoreDynamic : (onLoadMore || mockLoadMore),
+    fetchPage: shouldUseDynamic ? loadMoreDynamic : (onLoadMore || mockLoadMore),
     pageSize: 6
   });
+
+  const loadMore = fetchMore;
   
   // Combina estados de loading
   const combinedLoading = loading || isLoadingNews;
@@ -530,9 +532,9 @@ export const MobileNewsFeed: React.FC<MobileNewsFeedProps> = ({
       <div className={`
         grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6
         transition-all duration-500 ease-in-out
-        ${initialLoading ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}
+        ${loadingState.initialLoading ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}
       `}>
-        {!initialLoading && filteredNews.map((news, index) => (
+        {!loadingState.initialLoading && filteredNews.map((news, index) => (
           <MobileNewsCard
             key={news.id}
             {...convertToCardProps(news)}
