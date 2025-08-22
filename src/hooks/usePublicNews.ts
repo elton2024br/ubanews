@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import newsService from '@/services/newsService';
+import NewsService from '@/services/newsService';
 import { NewsArticle } from '@/shared/types/news';
 import { useNewsCache } from './useNewsCache';
 import { useDynamicData } from './useFeatureFlags';
@@ -59,7 +59,7 @@ export function usePublicNews(options: UsePublicNewsOptions = {}): UsePublicNews
   const getCacheKey = useCallback(() => {
     const params = new URLSearchParams();
     if (opts.limit) params.set('limit', opts.limit.toString());
-    if (opts.offset) params.set('offset', opts.offset.toString());
+    params.set('offset', opts.offset.toString());
     if (opts.category) params.set('category', opts.category);
     if (opts.search) params.set('search', opts.search);
     if (opts.sortBy) params.set('sortBy', opts.sortBy);
@@ -128,10 +128,14 @@ export function usePublicNews(options: UsePublicNewsOptions = {}): UsePublicNews
     if (loading || !hasMore) return;
     
     const newOffset = opts.offset + data.length;
-    const cacheKey = getCacheKey().replace(
-      `offset=${opts.offset}`,
-      `offset=${newOffset}`
-    );
+    const params = new URLSearchParams();
+    if (opts.limit) params.set('limit', opts.limit.toString());
+    params.set('offset', newOffset.toString());
+    if (opts.category) params.set('category', opts.category);
+    if (opts.search) params.set('search', opts.search);
+    if (opts.sortBy) params.set('sortBy', opts.sortBy);
+    if (opts.sortOrder) params.set('sortOrder', opts.sortOrder);
+    const cacheKey = `news-public-${params.toString()}`;
     
     setLoading(true);
     setError(null);
