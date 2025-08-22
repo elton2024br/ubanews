@@ -1,25 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { announceToScreenReader } from '@/utils/accessibility';
-import { supabase } from '@/lib/supabaseClient';
+import { searchNews, SearchResult } from '@/services/newsApi';
 
 interface SearchFilter {
   id: string;
   label: string;
   value: string;
   type: 'category' | 'date' | 'author' | 'tag';
-}
-
-interface SearchResult {
-  id: string;
-  title: string;
-  summary: string;
-  category: string;
-  author: string;
-  publishedAt: string;
-  imageUrl?: string;
-  tags: string[];
-  readTime: number;
-  views: number;
 }
 
 interface SearchState {
@@ -126,17 +113,7 @@ export const useAdvancedSearch = (options: UseAdvancedSearchOptions = {}) => {
         const author = filters.find(f => f.type === 'author')?.value;
         const tags = filters.filter(f => f.type === 'tag').map(f => f.value);
 
-        const { data, error } = await supabase.rpc('search_news', {
-          term: query,
-          category,
-          date_range,
-          author,
-          tags
-        });
-
-        if (error) throw error;
-
-        const results = (data ?? []) as SearchResult[];
+        const results = await searchNews({ term: query, category, date_range, author, tags });
         const hasMore = results.length === pageSize;
 
         setSearchState(prev => ({
