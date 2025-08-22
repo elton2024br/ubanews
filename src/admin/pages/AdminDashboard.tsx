@@ -34,8 +34,6 @@ import {
 } from 'lucide-react';
 import { DashboardStats } from '../types/admin';
 import { supabase } from '@/lib/supabaseClient';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 interface ChartData {
   name: string;
@@ -97,10 +95,11 @@ const AdminDashboard: React.FC = () => {
 
         // Prepare chart data
         const last7Days = Array.from({ length: 7 }, (_, i) => {
-          const date = subDays(new Date(), i);
+          const date = new Date();
+          date.setDate(date.getDate() - i);
           return {
-            name: format(date, 'dd/MM', { locale: ptBR }),
-            date: format(date, 'yyyy-MM-dd'),
+            name: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+            date: date.toISOString().split('T')[0],
             value: 0
           };
         }).reverse();
@@ -108,7 +107,7 @@ const AdminDashboard: React.FC = () => {
         // News per day (last 7 days)
         const newsPerDay = last7Days.map(day => {
           const dayNews = newsResult.data.filter(news => {
-            const newsDate = format(new Date(news.created_at), 'yyyy-MM-dd');
+            const newsDate = new Date(news.created_at).toISOString().split('T')[0];
             return newsDate === day.date;
           });
           return {
@@ -220,7 +219,7 @@ const AdminDashboard: React.FC = () => {
         <div className="flex items-center space-x-2">
           <Badge variant="outline" className="text-xs">
             <Clock className="w-3 h-3 mr-1" />
-            Atualizado {format(lastUpdate, 'HH:mm', { locale: ptBR })}
+            Atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </Badge>
           <Button onClick={fetchDashboardData} variant="outline" size="sm">
             <RefreshCw className="w-4 h-4 mr-2" />

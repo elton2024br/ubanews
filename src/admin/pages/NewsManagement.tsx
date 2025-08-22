@@ -31,8 +31,6 @@ import {
 } from 'lucide-react';
 import { AdminNews, NewsFilters, PaginationInfo } from '../types/admin';
 import { supabase } from '@/lib/supabaseClient';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -257,7 +255,7 @@ const NewsManagement: React.FC = () => {
       tags: Array.isArray(newsItem.tags) ? newsItem.tags.join(', ') : '',
       featured_image: newsItem.featured_image || '',
       status: newsItem.status,
-      publish_date: newsItem.publish_date ? format(new Date(newsItem.publish_date), 'yyyy-MM-dd\'T\'HH:mm') : ''
+      publish_date: newsItem.publish_date ? new Date(newsItem.publish_date).toISOString().slice(0, 16) : ''
     });
     setIsEditDialogOpen(true);
   };
@@ -591,7 +589,7 @@ const NewsManagement: React.FC = () => {
                       <TableCell>
                         <div className="flex items-center text-sm text-muted-foreground">
                           <Calendar className="w-4 h-4 mr-1" />
-                          {format(new Date(newsItem.created_at), 'dd/MM/yyyy', { locale: ptBR })}
+                          {new Date(newsItem.created_at).toLocaleDateString('pt-BR')}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -725,7 +723,7 @@ const NewsManagement: React.FC = () => {
                 <div className="flex items-center space-x-4 mt-2 text-sm text-muted-foreground">
                   <span>Por {selectedNews.author?.name}</span>
                   <span>•</span>
-                  <span>{format(new Date(selectedNews.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</span>
+                  <span>{new Date(selectedNews.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                   <span>•</span>
                   <Badge variant="outline">{selectedNews.category}</Badge>
                   <span>•</span>

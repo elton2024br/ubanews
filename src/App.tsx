@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { useEffect, lazy, Suspense } from "react";
 import Index from "./pages/Index";
-import NewsPage from "./pages/NewsPage";
 import {
   SearchResultsLazy,
   NotFoundLazy,
@@ -17,8 +16,9 @@ import {
   TermsOfUseLazy,
   LoadingSpinner
 } from "./components/LazyComponents";
-import WebVitalsDashboard from "./components/WebVitalsDashboard";
-import ServiceWorkerManager from "./components/ServiceWorkerUpdate";
+const NewsPage = lazy(() => import("./pages/NewsPage"));
+const WebVitalsDashboard = lazy(() => import("./components/WebVitalsDashboard"));
+const ServiceWorkerManager = lazy(() => import("./components/ServiceWorkerUpdate"));
 import ErrorBoundary from "./components/ErrorBoundary";
 import { initWebVitals, monitorResourceLoading } from "./utils/webVitals";
 import { useServiceWorker } from "./hooks/useServiceWorker";
@@ -99,7 +99,14 @@ const App = () => {
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Navigate to="/admin/login" replace />} />
-                  <Route path="/news/:id" element={<NewsPage />} />
+                  <Route
+                    path="/news/:id"
+                    element={
+                      <Suspense fallback={<LoadingSpinner message="Carregando notícia..." />}>
+                        <NewsPage />
+                      </Suspense>
+                    }
+                  />
                   <Route path="/search" element={<SearchResultsLazy />} />
                   <Route path="/about" element={<AboutLazy />} />
                   <Route path="/contact" element={<ContactLazy />} />
@@ -147,10 +154,12 @@ const App = () => {
                   <Route path="*" element={<NotFoundLazy />} />
                 </Routes>
               </ErrorBoundary>
-              {/* Web Vitals Dashboard - only visible in development or when debug=true */}
-              <WebVitalsDashboard />
-              {/* Service Worker Manager - handles updates and network status */}
-              <ServiceWorkerManager />
+              <Suspense fallback={null}>
+                {/* Web Vitals Dashboard - only visible in development or when debug=true */}
+                <WebVitalsDashboard />
+                {/* Service Worker Manager - handles updates and network status */}
+                <ServiceWorkerManager />
+              </Suspense>
             </BrowserRouter>
           </TooltipProvider>
         </ThemeProvider>
