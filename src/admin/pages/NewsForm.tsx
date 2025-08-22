@@ -208,20 +208,43 @@ export const NewsForm: React.FC = () => {
         toast.success('Notícia atualizada com sucesso');
       } else {
         // Create new news
-        const { error } = await supabase
+        const { data: createdNews, error: createError } = await supabase
           .from('admin_news')
           .insert({
             ...newsData,
             created_at: new Date().toISOString()
-          });
+          })
+          .select('id')
+          .single();
 
-        if (error) {
-          console.error('Error creating news:', error);
+        if (createError) {
+          console.error('Error creating news:', createError);
           toast.error('Erro ao criar notícia');
           return;
         }
 
-        toast.success('Notícia criada com sucesso');
+        const newNewsId = createdNews?.id;
+
+        if (newsData.status === 'pending') {
+          const { error: approvalError } = await supabase
+            .from('news_approvals')
+            .insert({
+              news_id: newNewsId,
+              reviewer_id: user?.id,
+              status: 'pending',
+              comments: ''
+            });
+
+          if (approvalError) {
+            console.error('Error creating news approval:', approvalError);
+            toast.error('Erro ao enviar notícia para aprovação');
+            return;
+          }
+
+          toast.success('Notícia criada e enviada para aprovação');
+        } else {
+          toast.success('Notícia criada com sucesso');
+        }
       }
 
       setHasUnsavedChanges(false);
