@@ -6,8 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/lib/supabaseClient';
-import { NewsArticle } from '@/shared/types/news';
+import { useNewsByCategory } from '@/hooks/useNewsByCategory';
 import { Newspaper, TrendingUp, MapPin, Users, Building, Heart, Leaf, Car, GraduationCap, AlertTriangle } from 'lucide-react';
 
 interface Category {
@@ -94,31 +93,12 @@ const categories: Category[] = [
 
 const Categories: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [newsByCategory, setNewsByCategory] = useState<Record<string, NewsArticle[]>>({});
-  const [loadingCategories, setLoadingCategories] = useState<Record<string, boolean>>({});
-  const [errorCategories, setErrorCategories] = useState<Record<string, string | null>>({});
-
-  const fetchNews = async (categoryId: string) => {
-    setLoadingCategories(prev => ({ ...prev, [categoryId]: true }));
-    setErrorCategories(prev => ({ ...prev, [categoryId]: null }));
-    const { data, error } = await supabase
-      .from('admin_news')
-      .select('*')
-      .eq('category', categoryId);
-
-    if (error) {
-      setErrorCategories(prev => ({ ...prev, [categoryId]: error.message }));
-    } else if (data) {
-      setNewsByCategory(prev => ({ ...prev, [categoryId]: data as NewsArticle[] }));
-    }
-
-    setLoadingCategories(prev => ({ ...prev, [categoryId]: false }));
-  };
+  const { newsByCategory, loading: loadingCategories, error: errorCategories, loadCategory } = useNewsByCategory();
 
   const handleCategorySelect = (categoryId: string) => {
     setSelectedCategory(categoryId);
     if (!newsByCategory[categoryId]) {
-      fetchNews(categoryId);
+      loadCategory(categoryId);
     }
   };
 
