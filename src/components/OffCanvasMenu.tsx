@@ -3,6 +3,7 @@ import { X, Home, Newspaper, Users, Phone, Mail, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
+import { trapFocus, generateAriaLabel } from '@/utils/accessibility';
 
 interface OffCanvasMenuProps {
   isOpen: boolean;
@@ -18,7 +19,12 @@ const navigationItems = [
 ];
 
 export function OffCanvasMenu({ isOpen, onClose }: OffCanvasMenuProps) {
-  // Handle escape key press
+  // Focus management
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
+  const removeTrapRef = React.useRef<(() => void) | null>(null);
+  const previousFocusRef = React.useRef<HTMLElement | null>(null);
+
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -27,28 +33,25 @@ export function OffCanvasMenu({ isOpen, onClose }: OffCanvasMenuProps) {
     };
 
     if (isOpen) {
+      previousFocusRef.current = document.activeElement as HTMLElement;
       document.addEventListener('keydown', handleEscape);
-      // Prevent body scroll when menu is open
       document.body.style.overflow = 'hidden';
+      if (menuRef.current) {
+        removeTrapRef.current = trapFocus(menuRef.current);
+      }
+      closeButtonRef.current?.focus();
     } else {
       document.body.style.overflow = 'unset';
+      removeTrapRef.current?.();
+      previousFocusRef.current?.focus();
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
+      removeTrapRef.current?.();
     };
   }, [isOpen, onClose]);
-
-  // Focus management
-  const menuRef = React.useRef<HTMLDivElement>(null);
-  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
-
-  React.useEffect(() => {
-    if (isOpen && closeButtonRef.current) {
-      closeButtonRef.current.focus();
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -87,7 +90,7 @@ export function OffCanvasMenu({ isOpen, onClose }: OffCanvasMenuProps) {
             size="sm"
             onClick={onClose}
             className="h-8 w-8 p-0"
-            aria-label="Fechar menu"
+            aria-label={generateAriaLabel('menu', 'close')}
           >
             <X className="h-4 w-4" />
           </Button>

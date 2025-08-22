@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { generateAriaLabel } from '@/utils/accessibility';
 
 // Componente de notificação de atualização
 export const UpdateNotification: React.FC = () => {
@@ -39,6 +40,7 @@ export const UpdateNotification: React.FC = () => {
                 variant="ghost"
                 onClick={dismissUpdate}
                 className="text-blue-600 hover:bg-blue-100"
+                aria-label={generateAriaLabel('notificação de atualização', 'fechar')}
               >
                 <X className="h-4 w-4" />
               </Button>

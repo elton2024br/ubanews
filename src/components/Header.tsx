@@ -1,6 +1,7 @@
 import { Search, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { generateAriaLabel } from "@/utils/accessibility";
 
 const Header = () => {
   return (
@@ -40,7 +41,12 @@ const Header = () => {
             <Button variant="secondary" size="sm">
               Entrar
             </Button>
-            <Button variant="ghost" size="sm" className="md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden"
+              aria-label={generateAriaLabel('menu', 'open')}
+            >
               <Menu className="w-5 h-5" />
             </Button>
           </div>
