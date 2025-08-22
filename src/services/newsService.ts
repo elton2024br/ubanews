@@ -317,16 +317,31 @@ class NewsService {
 
   async getRelatedNews(articleId: string, limit: number = 3): Promise<NewsArticle[]> {
     try {
-      const currentArticle = await this.getNewsById(articleId);
+      // Start fetching the current article immediately
+      const currentArticlePromise = this.getNewsById(articleId);
+
+      // Try to determine category from static data to start related news fetch in parallel
+      const staticArticle = newsArticles.find(article => article.id === articleId);
+      let relatedNewsPromise: Promise<NewsServiceResult>;
+
+      if (staticArticle) {
+        relatedNewsPromise = this.getPublicNews({
+          category: staticArticle.category,
+          limit: limit + 1,
+        });
+      } else {
+        relatedNewsPromise = currentArticlePromise.then(article => {
+          if (!article) {
+            return { success: true, data: [], total: 0, hasMore: false } as NewsServiceResult;
+          }
+          return this.getPublicNews({ category: article.category, limit: limit + 1 });
+        });
+      }
+
+      const [currentArticle, result] = await Promise.all([currentArticlePromise, relatedNewsPromise]);
+
       if (!currentArticle) return [];
 
-      const options: NewsServiceOptions = {
-        category: currentArticle.category,
-        limit: limit + 1, // Get one extra to exclude current article
-      };
-
-      const result = await this.getPublicNews(options);
-      
       return result.data
         .filter(article => article.id !== articleId)
         .slice(0, limit);
