@@ -33,7 +33,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { DashboardStats } from '../types/admin';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 

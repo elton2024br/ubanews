@@ -34,7 +34,7 @@ import {
   MessageSquare,
   FileText
 } from 'lucide-react';
-import { supabase } from '../../../supabase/config';
+import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
 interface NewsApproval {

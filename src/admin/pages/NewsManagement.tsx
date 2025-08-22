@@ -30,7 +30,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { AdminNews, NewsFilters, PaginationInfo } from '../types/admin';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { z } from 'zod';
