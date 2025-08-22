@@ -1,73 +1,49 @@
-# Welcome to your Lovable project
+# UbaNews
 
-## Project info
+## Propósito
 
-**URL**: https://lovable.dev/projects/0618b2c6-61f2-4963-86c2-477715e1c918
+UbaNews é um portal de notícias desenvolvido com React e Vite. O projeto tem como objetivo disponibilizar um feed de notícias dinâmico utilizando Supabase para armazenamento e consulta de dados.
 
-## How can I edit this code?
+## Requisitos
 
-There are several ways of editing your application.
+- Node.js ≥ 20
+- npm ≥ 10
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/0618b2c6-61f2-4963-86c2-477715e1c918) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+npm install
 ```
 
-**Edit a file directly in GitHub**
+## Scripts principais
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Script | Descrição |
+|--------|-----------|
+| `npm run dev` | Inicia o servidor de desenvolvimento com recarregamento automático. |
+| `npm run build` | Gera o build de produção na pasta `dist/`. |
+| `npm run preview` | Executa uma instância local para visualizar o build de produção. |
+| `npm run lint` | Roda o ESLint para verificar problemas de estilo e qualidade. |
+| `npm test` | Executa a suíte de testes com Vitest. |
+| `npm run check` | Executa lint e testes em sequência. |
 
-**Use GitHub Codespaces**
+## Arquitetura
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `src/`: código principal da aplicação React, incluindo páginas, componentes e utilitários.
+- `src/admin/`: módulos relacionados à interface administrativa (autenticação, contextos, layout e páginas restritas).
+- `src/services/`: camada de serviços para integração com APIs e acessos a dados, como `newsService` para buscar notícias no Supabase.
 
-## What technologies are used for this project?
+## Variáveis de ambiente
 
-This project is built with:
+Crie um arquivo `.env` na raiz do projeto e defina as seguintes variáveis:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+VITE_SUPABASE_URL=<URL do seu projeto Supabase>
+VITE_SUPABASE_ANON_KEY=<Chave anônima do Supabase>
+```
 
-## How can I deploy this project?
+## Deploy
 
-Simply open [Lovable](https://lovable.dev/projects/0618b2c6-61f2-4963-86c2-477715e1c918) and click on Share -> Publish.
+1. Defina as variáveis de ambiente em `.env` ou na plataforma de hospedagem.
+2. Instale as dependências com `npm install`.
+3. Gere os arquivos de produção com `npm run build`.
+4. Publique o conteúdo da pasta `dist/` em um serviço de hospedagem estático (Vercel, Netlify, etc.).
+5. Opcionalmente, utilize `npm run preview` para validar o build antes do deploy.
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
