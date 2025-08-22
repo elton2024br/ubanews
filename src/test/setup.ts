@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
-import { afterEach, beforeAll, vi } from 'vitest';
+import { afterEach, beforeAll, expect, vi } from 'vitest';
+import { toHaveNoViolations } from 'vitest-axe';
+
+expect.extend(toHaveNoViolations);
 
 // Cleanup after each test case
 afterEach(() => {
