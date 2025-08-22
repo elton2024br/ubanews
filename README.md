@@ -72,6 +72,15 @@ To connect a domain, navigate to Project > Settings > Domains and click Connect 
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
 
+## Environment variables
+
+For production deployments, configure the following Supabase environment variables:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+When these are not set, the application falls back to a mock Supabase client which is intended only for local development and tests.
+
 ## Architecture
 
 See [docs/architecture.md](docs/architecture.md) for a high-level diagram of the project's modules.
