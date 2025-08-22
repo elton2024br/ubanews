@@ -1,13 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import MobileHeader from '../components/MobileHeader';
 import Footer from '../components/Footer';
 import { MobileNewsCard } from '../components/MobileNewsCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { usePublicNews } from '../hooks/usePublicNews';
+import { supabase } from '@/lib/supabaseClient';
 import { NewsArticle } from '@/shared/types/news';
 import { Newspaper, TrendingUp, MapPin, Users, Building, Heart, Leaf, Car, GraduationCap, AlertTriangle } from 'lucide-react';
 
@@ -94,50 +93,41 @@ const categories: Category[] = [
 ];
 
 const Categories: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const { news, loading, error } = usePublicNews();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [newsByCategory, setNewsByCategory] = useState<Record<string, NewsArticle[]>>({});
+  const [loadingCategories, setLoadingCategories] = useState<Record<string, boolean>>({});
+  const [errorCategories, setErrorCategories] = useState<Record<string, string | null>>({});
 
-  // Filtrar notícias por categoria
-  const categorizedNews = useMemo(() => {
-    if (!news) return {};
-    
-    const categorized: Record<string, NewsArticle[]> = {};
-    categories.forEach(cat => {
-      categorized[cat.id] = news.filter(item => 
-        item.category?.toLowerCase() === cat.name.toLowerCase()
-      );
-    });
-    
-    return categorized;
-  }, [news]);
+  const fetchNews = async (categoryId: string) => {
+    setLoadingCategories(prev => ({ ...prev, [categoryId]: true }));
+    setErrorCategories(prev => ({ ...prev, [categoryId]: null }));
+    const { data, error } = await supabase
+      .from('admin_news')
+      .select('*')
+      .eq('category', categoryId);
 
-  // Contar notícias por categoria
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    categories.forEach(cat => {
-      counts[cat.id] = categorizedNews[cat.id]?.length || 0;
-    });
-    return counts;
-  }, [categorizedNews]);
+    if (error) {
+      setErrorCategories(prev => ({ ...prev, [categoryId]: error.message }));
+    } else if (data) {
+      setNewsByCategory(prev => ({ ...prev, [categoryId]: data as NewsArticle[] }));
+    }
 
-  // Notícias mais recentes (todas as categorias)
-  const latestNews = useMemo(() => {
-    if (!news) return [];
-    return [...news]
-      .sort((a, b) => new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime())
-      .slice(0, 6);
-  }, [news]);
+    setLoadingCategories(prev => ({ ...prev, [categoryId]: false }));
+  };
 
-  // Notícias mais lidas
-  const trendingNews = useMemo(() => {
-    if (!news) return [];
-    return [...news]
-      .sort((a, b) => (b.views || 0) - (a.views || 0))
-      .slice(0, 6);
-  }, [news]);
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    if (!newsByCategory[categoryId]) {
+      fetchNews(categoryId);
+    }
+  };
 
-  const renderNewsGrid = (items: NewsArticle[]) => {
-    if (loading) {
+  const renderNewsGrid = (categoryId: string) => {
+    const items = newsByCategory[categoryId] || [];
+    const isLoading = loadingCategories[categoryId];
+    const error = errorCategories[categoryId];
+
+    if (isLoading) {
       return (
         <div className="grid gap-4">
           {[...Array(6)].map((_, i) => (
@@ -147,6 +137,16 @@ const Categories: React.FC = () => {
               <Skeleton className="h-4 w-1/2" />
             </div>
           ))}
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="text-center py-12">
+          <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+          <h3 className="text-lg font-semibold mb-2">Erro ao carregar notícias</h3>
+          <p className="text-muted-foreground">{error}</p>
         </div>
       );
     }
@@ -165,7 +165,7 @@ const Categories: React.FC = () => {
 
     return (
       <div className="grid gap-4">
-        {items.map((item) => (
+        {items.map(item => (
           <MobileNewsCard key={item.id} news={item} />
         ))}
       </div>
@@ -200,14 +200,14 @@ const Categories: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {categories.map((category) => {
                   const Icon = category.icon;
-                  const count = categoryCounts[category.id];
-                  
+                  const count = newsByCategory[category.id]?.length || 0;
+
                   return (
                     <Button
                       key={category.id}
                       variant={selectedCategory === category.id ? "default" : "outline"}
                       className="h-auto p-4 flex flex-col items-center space-y-2 text-center"
-                      onClick={() => setSelectedCategory(category.id)}
+                      onClick={() => handleCategorySelect(category.id)}
                     >
                       <div className={`p-2 rounded-full ${category.color} text-white`}>
                         <Icon className="w-5 h-5" />
@@ -224,66 +224,28 @@ const Categories: React.FC = () => {
           </Card>
         </section>
 
-        {/* News by Category */}
-        <Tabs defaultValue="all" value={selectedCategory} onValueChange={setSelectedCategory}>
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
-            <TabsTrigger value="all">Todas</TabsTrigger>
-            <TabsTrigger value="latest">Recentes</TabsTrigger>
-            <TabsTrigger value="trending">Populares</TabsTrigger>
-            {categories.slice(0, 3).map(cat => (
-              <TabsTrigger key={cat.id} value={cat.id}>
-                {cat.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <TabsContent value="all" className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Todas as Notícias</h2>
-              {renderNewsGrid(news || [])}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="latest" className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Notícias Recentes</h2>
-              {renderNewsGrid(latestNews)}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="trending" className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Mais Lidas</h2>
-              {renderNewsGrid(trendingNews)}
-            </div>
-          </TabsContent>
-
-          {categories.map((category) => (
-            <TabsContent key={category.id} value={category.id} className="space-y-6">
-              <div>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className={`p-2 rounded-full ${category.color} text-white`}>
-                    <category.icon className="w-5 h-5" />
+        {selectedCategory && (
+          <section className="space-y-6">
+            {(() => {
+              const category = categories.find(cat => cat.id === selectedCategory);
+              if (!category) return null;
+              const Icon = category.icon;
+              return (
+                <>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className={`p-2 rounded-full ${category.color} text-white`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold">{category.name}</h2>
+                      <p className="text-muted-foreground">{category.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold">{category.name}</h2>
-                    <p className="text-muted-foreground">{category.description}</p>
-                  </div>
-                </div>
-                {renderNewsGrid(categorizedNews[category.id] || [])}
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
-
-        {error && (
-          <div className="text-center py-12">
-            <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-            <h3 className="text-lg font-semibold mb-2">Erro ao carregar notícias</h3>
-            <p className="text-muted-foreground">
-              Não foi possível carregar as notícias. Tente novamente mais tarde.
-            </p>
-          </div>
+                  {renderNewsGrid(selectedCategory)}
+                </>
+              );
+            })()}
+          </section>
         )}
       </main>
 
