@@ -185,6 +185,82 @@ export type Database = {
           created_at?: string;
         };
       };
+      web_vitals: {
+        Row: {
+          id: string;
+          name: string;
+          value: number;
+          rating: string;
+          delta: number | null;
+          url: string | null;
+          navigation_type: string | null;
+          user_agent: string | null;
+          connection_type: string | null;
+          is_mobile: boolean | null;
+          screen_width: number | null;
+          screen_height: number | null;
+          device_pixel_ratio: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          value: number;
+          rating: string;
+          delta?: number | null;
+          url?: string | null;
+          navigation_type?: string | null;
+          user_agent?: string | null;
+          connection_type?: string | null;
+          is_mobile?: boolean | null;
+          screen_width?: number | null;
+          screen_height?: number | null;
+          device_pixel_ratio?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          value?: number;
+          rating?: string;
+          delta?: number | null;
+          url?: string | null;
+          navigation_type?: string | null;
+          user_agent?: string | null;
+          connection_type?: string | null;
+          is_mobile?: boolean | null;
+          screen_width?: number | null;
+          screen_height?: number | null;
+          device_pixel_ratio?: number | null;
+          created_at?: string;
+        };
+      };
+      web_vital_alerts: {
+        Row: {
+          id: number;
+          vital_id: string;
+          metric_name: string;
+          metric_value: number;
+          threshold: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          vital_id: string;
+          metric_name: string;
+          metric_value: number;
+          threshold: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          vital_id?: string;
+          metric_name?: string;
+          metric_value?: number;
+          threshold?: number;
+          created_at?: string;
+        };
+      };
     };
   };
 };

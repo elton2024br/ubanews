@@ -1,4 +1,5 @@
 import { onCLS, onFCP, onLCP, onTTFB, onINP } from 'web-vitals';
+import { supabase } from '@/lib/supabaseClient';
 
 // Web Vitals thresholds (in milliseconds)
 const THRESHOLDS = {
@@ -90,6 +91,27 @@ function sendToAnalytics(data: PerformanceData) {
       body: JSON.stringify(data),
     }).catch(error => {
       console.warn('Failed to send Web Vitals data:', error);
+    });
+  }
+
+  // Persist metrics in Supabase for monitoring
+  const metric = data.metrics[0];
+  if (metric) {
+    void supabase.from('web_vitals').insert({
+      name: metric.name,
+      value: metric.value,
+      rating: metric.rating,
+      delta: metric.delta,
+      url: data.url,
+      navigation_type: metric.navigationType,
+      user_agent: data.userAgent,
+      connection_type: data.connectionType,
+      is_mobile: data.deviceInfo.isMobile,
+      screen_width: data.deviceInfo.screenWidth,
+      screen_height: data.deviceInfo.screenHeight,
+      device_pixel_ratio: data.deviceInfo.devicePixelRatio
+    }).catch(error => {
+      console.warn('Failed to send Web Vitals to Supabase:', error);
     });
   }
 }

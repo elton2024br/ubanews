@@ -85,6 +85,10 @@ When these are not set, the application falls back to a mock Supabase client whi
 
 See [docs/architecture.md](docs/architecture.md) for a high-level diagram of the project's modules.
 
+## Performance monitoring
+
+Web Vitals metrics are collected in the browser and stored in Supabase. The admin panel includes a **Performance** page to review metrics and alerts. For schema details see [docs/performance-monitoring.md](docs/performance-monitoring.md).
+
 ## Contributing
 
 Guidelines for commits, linting, and tests are available in [CONTRIBUTING.md](CONTRIBUTING.md).
