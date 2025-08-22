@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
+import { RichTextEditor } from '../../components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Badge } from '../../components/ui/badge';
 import {
@@ -46,14 +47,19 @@ import { z } from 'zod';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
+const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim();
+
 // Validation schema
 const newsSchema = z.object({
   title: z.string()
     .min(10, 'O título deve ter pelo menos 10 caracteres')
     .max(200, 'O título deve ter no máximo 200 caracteres'),
-  content: z.string()
-    .min(50, 'O conteúdo deve ter pelo menos 50 caracteres')
-    .max(10000, 'O conteúdo deve ter no máximo 10.000 caracteres'),
+  content: z.string().refine((val) => {
+    const len = stripHtml(val).length;
+    return len >= 50 && len <= 10000;
+  }, {
+    message: 'O conteúdo deve ter entre 50 e 10.000 caracteres'
+  }),
   summary: z.string()
     .min(20, 'O resumo deve ter pelo menos 20 caracteres')
     .max(500, 'O resumo deve ter no máximo 500 caracteres'),
@@ -338,13 +344,10 @@ export const NewsForm: React.FC = () => {
                 </p>
               )}
               
-              <div className="prose max-w-none">
-                {watchedValues.content.split('\n').map((paragraph, index) => (
-                  <p key={index} className="mb-4">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
+              <div
+                className="prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: watchedValues.content }}
+              />
               
               {watchedValues.tags && (
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
@@ -390,7 +393,7 @@ export const NewsForm: React.FC = () => {
           <Button
             variant="outline"
             onClick={() => setPreviewMode(true)}
-            disabled={!watchedValues.title || !watchedValues.content}
+            disabled={!watchedValues.title || !stripHtml(watchedValues.content)}
           >
             <Eye className="w-4 h-4 mr-2" />
             Pré-visualizar
@@ -460,14 +463,13 @@ export const NewsForm: React.FC = () => {
                       <FormItem>
                         <FormLabel>Conteúdo *</FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder="Digite o conteúdo completo da notícia..."
-                            className="min-h-[300px]"
-                            {...field}
+                          <RichTextEditor
+                            value={field.value}
+                            onChange={field.onChange}
                           />
                         </FormControl>
                         <FormDescription>
-                          {field.value?.length || 0}/10.000 caracteres
+                          {stripHtml(field.value || '').length}/10.000 caracteres
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
