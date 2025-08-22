@@ -19,12 +19,18 @@ interface NewsServiceResult {
   error?: string;
 }
 
+interface TtlMetric {
+  count: number;
+  totalTTL: number;
+}
+
 interface NewsServiceStats {
   totalRequests: number;
   cacheHits: number;
   cacheMisses: number;
   averageResponseTime: number;
   errorCount: number;
+  ttlMetrics: Record<string, TtlMetric>;
 }
 
 class NewsService {
@@ -35,6 +41,7 @@ class NewsService {
     cacheMisses: 0,
     averageResponseTime: 0,
     errorCount: 0,
+    ttlMetrics: {},
   };
   private responseTimes: number[] = [];
   private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
@@ -58,7 +65,27 @@ class NewsService {
     return Date.now() - entry.timestamp < entry.ttl;
   }
 
-  private addToCache(key: string, data: NewsArticle[], ttl: number = this.DEFAULT_TTL) {
+  private calculateTTL(options: NewsServiceOptions, data: NewsArticle[]): number {
+    let ttl = this.DEFAULT_TTL;
+
+    if (options.category) {
+      const category = options.category.toLowerCase();
+      if (['breaking', 'sports'].includes(category)) {
+        ttl = 60 * 1000; // 1 minute for volatile categories
+      } else {
+        ttl = 10 * 60 * 1000; // 10 minutes for more stable content
+      }
+    }
+
+    const averageViews = data.reduce((sum, item) => sum + (item.views || 0), 0) / (data.length || 1);
+    if (averageViews > 1000) {
+      ttl = Math.min(ttl, 2 * 60 * 1000); // High access volume shortens TTL
+    }
+
+    return ttl;
+  }
+
+  private addToCache(key: string, data: NewsArticle[], options: NewsServiceOptions = {}) {
     // Implement LRU-like behavior
     if (this.cache.has(key)) {
       this.cache.delete(key);
@@ -68,6 +95,14 @@ class NewsService {
       const firstKey = this.cache.keys().next().value;
       this.cache.delete(firstKey);
     }
+
+    const ttl = this.calculateTTL(options, data);
+
+    const metricKey = options.category || 'general';
+    const metric = this.stats.ttlMetrics[metricKey] || { count: 0, totalTTL: 0 };
+    metric.count++;
+    metric.totalTTL += ttl;
+    this.stats.ttlMetrics[metricKey] = metric;
 
     this.cache.set(key, {
       data,
@@ -240,7 +275,7 @@ class NewsService {
 
       // Cache the result
       if (result.success) {
-        this.addToCache(cacheKey, result.data);
+        this.addToCache(cacheKey, result.data, options);
       }
 
       const responseTime = Date.now() - startTime;
@@ -352,7 +387,7 @@ class NewsService {
   }
 
   getStats(): NewsServiceStats {
-    return { ...this.stats };
+    return { ...this.stats, ttlMetrics: { ...this.stats.ttlMetrics } };
   }
 
   clearCache(): void {
