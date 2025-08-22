@@ -317,14 +317,12 @@ class NewsService {
             throw new Error(error.message);
           }
 
-          // Increment view count
+          // Increment view count using shared method
           if (data) {
-            await supabase
-              .from('news')
-              .update({ views: (data.views || 0) + 1 })
-              .eq('id', id);
-            
-            data.views = (data.views || 0) + 1;
+            const newViews = await this.incrementViews(id);
+            if (typeof newViews === 'number') {
+              data.views = newViews;
+            }
           }
 
           const responseTime = Date.now() - startTime;
@@ -410,20 +408,27 @@ class NewsService {
     }
   }
 
-  async incrementViews(id: string): Promise<boolean> {
+  async incrementViews(id: string): Promise<number | null> {
     try {
       if (this.useDynamicData) {
-        const { error } = await supabase
-          .from('news')
-          .update({ views: supabase.sql('views + 1') })
-          .eq('id', id);
-        
-        return !error;
+        const { data, error } = await supabase.rpc('increment_views', {
+          article_id: id,
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (typeof data === 'number') {
+          return data;
+        }
+
+        return data?.views ?? null;
       }
-      return false;
+      return null;
     } catch (error) {
       console.error('Error incrementing views:', error);
-      return false;
+      return null;
     }
   }
 
