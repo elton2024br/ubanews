@@ -1,5 +1,5 @@
 import { ReactNode, MouseEvent, KeyboardEvent, TouchEvent } from 'react';
-import { NewsVariant, NewsCategory, NewsSortBy } from './news';
+import { NewsVariant, NewsCategory, NewsSortBy } from '@/shared/types/news';
 
 // Component Props Types
 export interface BaseComponentProps {

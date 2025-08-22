@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePublicNews } from '../hooks/usePublicNews';
-import { NewsItem } from '../types/news';
+import { NewsArticle } from '@/shared/types/news';
 import { Newspaper, TrendingUp, MapPin, Users, Building, Heart, Leaf, Car, GraduationCap, AlertTriangle } from 'lucide-react';
 
 interface Category {
@@ -101,7 +101,7 @@ const Categories: React.FC = () => {
   const categorizedNews = useMemo(() => {
     if (!news) return {};
     
-    const categorized: Record<string, NewsItem[]> = {};
+    const categorized: Record<string, NewsArticle[]> = {};
     categories.forEach(cat => {
       categorized[cat.id] = news.filter(item => 
         item.category?.toLowerCase() === cat.name.toLowerCase()
@@ -136,7 +136,7 @@ const Categories: React.FC = () => {
       .slice(0, 6);
   }, [news]);
 
-  const renderNewsGrid = (items: NewsItem[]) => {
+  const renderNewsGrid = (items: NewsArticle[]) => {
     if (loading) {
       return (
         <div className="grid gap-4">

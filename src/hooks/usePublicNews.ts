@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import newsService from '@/services/newsService';
-import { NewsArticle } from '@/types/news';
+import { NewsArticle } from '@/shared/types/news';
 import { useNewsCache } from './useNewsCache';
 import { useDynamicData } from './useFeatureFlags';
 

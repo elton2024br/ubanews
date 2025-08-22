@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { NewsArticle } from '@/types/news';
+import { NewsArticle } from '@/shared/types/news';
 
 interface CacheEntry {
   data: NewsArticle[];

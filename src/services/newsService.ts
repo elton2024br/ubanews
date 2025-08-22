@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { newsArticles } from '../data/newsData';
-import { NewsArticle } from '../types/news';
+import { NewsArticle } from '@/shared/types/news';
 
 interface NewsServiceOptions {
   limit?: number;

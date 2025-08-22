@@ -3,7 +3,7 @@ import { render, RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi } from 'vitest';
-import { NewsArticle } from '@/types/news';
+import { NewsArticle } from '@/shared/types/news';
 
 // Create a custom render function that includes providers
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
@@ -33,19 +33,19 @@ const customRender = (
 export const createMockNewsArticle = (overrides?: Partial<NewsArticle>): NewsArticle => ({
   id: '1',
   title: 'Test Article',
-  content: 'Test content',
-  excerpt: 'Test excerpt',
-  author: 'Test Author',
-  publishedAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  category: 'general',
+  date: new Date().toISOString(),
+  category: 'Gastronomia',
   tags: ['test'],
-  imageUrl: 'https://example.com/image.jpg',
-  isPublished: true,
-  isFeatured: false,
-  isUrgent: false,
-  views: 0,
-  readingTime: 5,
+  image: {
+    src: 'https://example.com/image.jpg',
+    alt: 'Test image',
+    caption: 'Test caption'
+  },
+  excerpt: 'Test excerpt',
+  content: 'Test content',
+  readTime: 5,
+  featured: false,
+  author: 'Test Author',
   ...overrides,
 });
 
