@@ -25,13 +25,31 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() }
 }));
 
+vi.mock('@/components/ui/rich-text-editor', () => ({
+  RichTextEditor: ({ value, onChange }: any) => (
+    <textarea aria-label="Conteúdo" value={value} onChange={e => onChange(e.target.value)} />
+  )
+}));
+
+vi.mock('@/components/ui/select', () => ({
+  Select: ({ children, value, onValueChange, name }: any) => (
+    <select aria-label={name} value={value} onChange={e => onValueChange(e.target.value)} name={name}>
+      {children}
+    </select>
+  ),
+  SelectTrigger: ({ children }: any) => <>{children}</>,
+  SelectContent: ({ children }: any) => <>{children}</>,
+  SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
+  SelectValue: ({ placeholder }: any) => <option value="">{placeholder}</option>
+}));
+
 // Supabase mock helpers
 const insertAdminNews = vi.fn();
 const selectAdminNews = vi.fn();
 const singleAdminNews = vi.fn();
 const insertNewsApproval = vi.fn();
 
-const fromMock = vi.fn((table: string) => {
+function fromMock(table: string) {
   if (table === 'admin_news') {
     return {
       insert: insertAdminNews.mockReturnValue({
@@ -47,7 +65,7 @@ const fromMock = vi.fn((table: string) => {
     } as any;
   }
   return {} as any;
-});
+}
 
 vi.mock('@/lib/supabaseClient', () => ({
   supabase: { from: fromMock }
@@ -56,13 +74,10 @@ vi.mock('@/lib/supabaseClient', () => ({
 const fillForm = async () => {
   await userEvent.type(screen.getByLabelText(/Título/i), 'Título de teste válido');
   await userEvent.type(screen.getByLabelText(/Resumo/i), 'Resumo de teste com caracteres suficientes.');
-  await userEvent.type(screen.getByLabelText(/Conteúdo/i), 'Conteúdo de teste com mais de cinquenta caracteres para passar na validação.');
+  await userEvent.type(screen.getByRole('textbox', { name: /Conteúdo/i }), 'Conteúdo de teste com mais de cinquenta caracteres para passar na validação.');
 
-  await userEvent.click(screen.getByText('Selecione o status'));
-  await userEvent.click(screen.getByText('Pendente'));
-
-  await userEvent.click(screen.getByText('Selecione a categoria'));
-  await userEvent.click(screen.getByText('Política'));
+  await userEvent.selectOptions(screen.getByLabelText('status'), 'pending');
+  await userEvent.selectOptions(screen.getByLabelText('category'), 'Política');
 };
 
 describe('NewsForm', () => {
@@ -77,7 +92,7 @@ describe('NewsForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /Criar Notícia/i }));
 
     await waitFor(() => {
-      expect(fromMock).toHaveBeenCalledWith('news_approvals');
+      expect(insertNewsApproval).toHaveBeenCalled();
     });
 
     expect(insertNewsApproval).toHaveBeenCalledWith({
@@ -101,6 +116,27 @@ describe('NewsForm', () => {
       expect(toast.error).toHaveBeenCalledWith('Erro ao enviar notícia para aprovação');
     });
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('sanitiza entradas HTML antes de salvar', async () => {
+    render(<NewsForm />);
+
+    await fillForm();
+    await userEvent.clear(screen.getByLabelText(/Título/i));
+    await userEvent.type(
+      screen.getByLabelText(/Título/i),
+      '<script>alert(1)</script>Título válido'
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /Criar Notícia/i }));
+
+    await waitFor(() => {
+      expect(insertAdminNews).toHaveBeenCalled();
+    });
+
+    const inserted = insertAdminNews.mock.calls[0][0];
+    expect(inserted.title).toBe('Título válido');
+    expect(inserted.title).not.toMatch(/<script>/);
   });
 });
 

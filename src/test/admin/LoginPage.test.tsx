@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '../utils';
+import { render, screen, waitFor } from '../utils';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import LoginPage from '@/admin/auth/LoginPage';
 import { toast } from 'sonner';
 
@@ -25,17 +26,13 @@ describe('LoginPage', () => {
 
     render(<LoginPage />);
 
-    fireEvent.change(screen.getByLabelText(/Email/i), {
-      target: { value: 'user@example.com' }
-    });
-    fireEvent.change(screen.getByLabelText(/Senha/i), {
-      target: { value: 'senha' }
-    });
+    await userEvent.type(screen.getByLabelText(/Email/i), 'user@example.com');
+    await userEvent.type(screen.getByLabelText(/Senha/i), 'senha123');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'senha');
+      expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'senha123');
     });
 
     expect(toast.success).toHaveBeenCalled();
@@ -47,21 +44,32 @@ describe('LoginPage', () => {
 
     render(<LoginPage />);
 
-    fireEvent.change(screen.getByLabelText(/Email/i), {
-      target: { value: 'user@example.com' }
-    });
-    fireEvent.change(screen.getByLabelText(/Senha/i), {
-      target: { value: 'errada' }
-    });
+    await userEvent.type(screen.getByLabelText(/Email/i), 'user@example.com');
+    await userEvent.type(screen.getByLabelText(/Senha/i), 'errada1');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'errada');
+      expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'errada1');
     });
 
     expect(toast.error).toHaveBeenCalled();
     expect(screen.getByText('Credenciais inválidas')).toBeInTheDocument();
+  });
+
+  it('valida formato de email', async () => {
+    render(<LoginPage />);
+
+    await userEvent.type(screen.getByLabelText(/Email/i), 'invalid');
+    await userEvent.type(screen.getByLabelText(/Senha/i), '123456');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    await waitFor(() => {
+      expect(mockLogin).not.toHaveBeenCalled();
+    });
+
+    // Validation error prevents submission
   });
 });
 

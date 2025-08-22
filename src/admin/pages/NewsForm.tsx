@@ -45,6 +45,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
+import { sanitizeHtml, sanitizeText } from '@/utils/sanitization';
 
 const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim();
 
@@ -238,11 +239,26 @@ export const NewsForm: React.FC = () => {
     try {
       setSaving(true);
       
-      const newsData = {
+      const sanitizedData = {
         ...data,
-        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+        title: sanitizeText(data.title),
+        content: sanitizeHtml(data.content),
+        summary: sanitizeText(data.summary),
+        category: sanitizeText(data.category),
+        tags: sanitizeText(data.tags || ''),
+        featured_image_url: sanitizeText(data.featured_image_url || ''),
+        author_name: sanitizeText(data.author_name)
+      };
+
+      const validated = newsSchema.parse(sanitizedData);
+
+      const newsData = {
+        ...validated,
+        tags: validated.tags
+          ? validated.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+          : [],
         updated_at: new Date().toISOString(),
-        ...(data.status === 'published' && !newsItem?.published_at && {
+        ...(validated.status === 'published' && !newsItem?.published_at && {
           published_at: new Date().toISOString()
         })
       };
@@ -567,7 +583,7 @@ export const NewsForm: React.FC = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value} name={field.name}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione o status" />
@@ -592,7 +608,7 @@ export const NewsForm: React.FC = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Categoria *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value} name={field.name}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione a categoria" />

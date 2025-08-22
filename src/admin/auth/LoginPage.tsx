@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAdmin } from '../context/AdminProvider';
 import { Button } from '../../components/ui/button';
@@ -8,27 +8,38 @@ import { Label } from '../../components/ui/label';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Loader2, Shield, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const loginSchema = z.object({
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres')
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 const LoginPage: React.FC = () => {
   const { user, login, loading } = useAdmin();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' }
+  });
 
   // Redirect if already authenticated
   if (user && !loading) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: LoginFormData) => {
     setError('');
     setIsSubmitting(true);
-
     try {
-      const result = await login(email, password);
+      const result = await login(data.email, data.password);
       if (result.success) {
         toast.success('Login realizado com sucesso!');
       } else {
@@ -50,6 +61,12 @@ const LoginPage: React.FC = () => {
       </div>
     );
   }
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = form;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
@@ -76,7 +93,7 @@ const LoginPage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {error && (
                   <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>
@@ -89,11 +106,12 @@ const LoginPage: React.FC = () => {
                     id="email"
                     type="email"
                     placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
                     disabled={isSubmitting}
+                    {...register('email')}
                   />
+                  {errors.email && (
+                    <p className="text-sm text-red-500">{errors.email.message}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -103,10 +121,8 @@ const LoginPage: React.FC = () => {
                       id="password"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Sua senha"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
                       disabled={isSubmitting}
+                      {...register('password')}
                     />
                     <Button
                       type="button"
@@ -123,12 +139,15 @@ const LoginPage: React.FC = () => {
                       )}
                     </Button>
                   </div>
+                  {errors.password && (
+                    <p className="text-sm text-red-500">{errors.password.message}</p>
+                  )}
                 </div>
 
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isSubmitting || !email || !password}
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <>

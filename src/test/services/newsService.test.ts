@@ -51,4 +51,20 @@ describe('NewsService pagination and search', () => {
       'title.ilike.%economy%,content.ilike.%economy%'
     );
   });
+
+  it('sanitizes search term before querying', async () => {
+    mockQueryBuilder.then.mockImplementation((resolve: any) =>
+      resolve({ data: [], error: null, count: 0 })
+    );
+
+    await newsService.getPublicNews({ search: '<b>economy</b>' });
+
+    expect(mockQueryBuilder.or).toHaveBeenCalledWith(
+      'title.ilike.%economy%,content.ilike.%economy%'
+    );
+  });
+
+  it('rejeita opções inválidas', async () => {
+    await expect(newsService.getPublicNews({ limit: -1 })).rejects.toThrow();
+  });
 });

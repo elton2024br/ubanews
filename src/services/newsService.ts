@@ -1,15 +1,19 @@
 import { supabase } from '../lib/supabaseClient';
 import { newsArticles } from '../data/newsData';
 import { NewsArticle } from '@/shared/types/news';
+import { z } from 'zod';
+import { sanitizeText } from '@/utils/sanitization';
 
-interface NewsServiceOptions {
-  limit?: number;
-  offset?: number;
-  category?: string;
-  search?: string;
-  sortBy?: 'date' | 'views' | 'title';
-  sortOrder?: 'asc' | 'desc';
-}
+const newsOptionsSchema = z.object({
+  limit: z.number().int().min(1).max(100).optional(),
+  offset: z.number().int().min(0).optional(),
+  category: z.string().max(100).optional(),
+  search: z.string().max(200).optional(),
+  sortBy: z.enum(['date', 'views', 'title']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+});
+
+type NewsServiceOptions = z.infer<typeof newsOptionsSchema>;
 
 interface NewsServiceResult {
   success: boolean;
@@ -246,7 +250,13 @@ class NewsService {
 
   async getPublicNews(options: NewsServiceOptions = {}): Promise<NewsServiceResult> {
     const startTime = Date.now();
-    const cacheKey = this.getCacheKey(options);
+    const parsed = newsOptionsSchema.parse(options);
+    const sanitizedOptions: NewsServiceOptions = {
+      ...parsed,
+      category: parsed.category ? sanitizeText(parsed.category) : undefined,
+      search: parsed.search ? sanitizeText(parsed.search) : undefined,
+    };
+    const cacheKey = this.getCacheKey(sanitizedOptions);
 
     try {
       // Check cache first
@@ -270,18 +280,18 @@ class NewsService {
 
       if (this.useDynamicData) {
         try {
-          result = await this.fetchFromSupabase(options);
+          result = await this.fetchFromSupabase(sanitizedOptions);
         } catch (error) {
           console.warn('Falling back to static data due to Supabase error:', error);
-          result = this.getFromStaticData(options);
+          result = this.getFromStaticData(sanitizedOptions);
         }
       } else {
-        result = this.getFromStaticData(options);
+        result = this.getFromStaticData(sanitizedOptions);
       }
 
       // Cache the result
       if (result.success) {
-        this.addToCache(cacheKey, result.data, options);
+        this.addToCache(cacheKey, result.data, sanitizedOptions);
       }
 
       const responseTime = Date.now() - startTime;
