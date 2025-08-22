@@ -156,12 +156,13 @@ class NewsService {
     // Apply sorting
     if (options.sortBy) {
       filteredData.sort((a, b) => {
-        let aValue: any, bValue: any;
-        
+        let aValue: number | string;
+        let bValue: number | string;
+
         switch (options.sortBy) {
           case 'date':
-            aValue = new Date(a.publishedAt);
-            bValue = new Date(b.publishedAt);
+            aValue = new Date(a.publishedAt).getTime();
+            bValue = new Date(b.publishedAt).getTime();
             break;
           case 'views':
             aValue = a.views || 0;
@@ -175,11 +176,13 @@ class NewsService {
             return 0;
         }
 
-        if (options.sortOrder === 'asc') {
-          return aValue > bValue ? 1 : -1;
-        } else {
-          return aValue < bValue ? 1 : -1;
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          const comparison = aValue.localeCompare(bValue);
+          return options.sortOrder === 'asc' ? comparison : -comparison;
         }
+
+        const comparison = (aValue as number) - (bValue as number);
+        return options.sortOrder === 'asc' ? comparison : -comparison;
       });
     }
 
