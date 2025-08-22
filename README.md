@@ -61,6 +61,43 @@ This project is built with:
 - Tailwind CSS
 - Storybook
 
+## Local setup
+
+To run the project locally you will need a recent version of Node.js and npm. Once those are installed:
+
+1. Clone the repository and install dependencies:
+
+   ```sh
+   git clone <YOUR_GIT_URL>
+   cd <YOUR_PROJECT_NAME>
+   npm install
+   ```
+
+2. Create a `.env` file in the project root and define the environment variables listed below.
+
+3. Start the development server:
+
+   ```sh
+   npm run dev
+   ```
+
+The application will be available at `http://localhost:5173` by default.
+
+## Available scripts
+
+The following npm scripts are available:
+
+| Script | Description |
+| ------ | ----------- |
+| `npm run dev` | Start the Vite development server with hot reloading. |
+| `npm run build` | Create a production build. |
+| `npm run build:dev` | Build using the development configuration. |
+| `npm run preview` | Preview the production build locally. |
+| `npm run lint` | Run ESLint on the codebase. |
+| `npm test` | Run the test suite with Vitest. |
+| `npm run test:coverage` | Run tests and generate a coverage report. |
+| `npm run check` | Run linting and tests in a single command. |
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/0618b2c6-61f2-4963-86c2-477715e1c918) and click on Share -> Publish.
@@ -98,12 +135,14 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-trick
 
 ## Environment variables
 
-For production deployments, configure the following Supabase environment variables:
+The app expects the following Supabase environment variables to be defined in a `.env` file:
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+```
+VITE_SUPABASE_URL=<your-supabase-project-url>
+VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+```
 
-When these are not set, the application falls back to a mock Supabase client which is intended only for local development and tests.
+When these variables are not provided the application falls back to a mock Supabase client which is intended only for local development and tests.
 
 ## Architecture
 
