@@ -44,6 +44,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '../../../supabase/config';
+import { createNews, updateNews } from '../api/adminNews';
 import { toast } from 'sonner';
 
 // Validation schema
@@ -193,11 +194,8 @@ export const NewsForm: React.FC = () => {
       };
 
       if (isEditing && id) {
-        // Update existing news
-        const { error } = await supabase
-          .from('admin_news')
-          .update(newsData)
-          .eq('id', id);
+        // Update existing news through secure edge function
+        const { error } = await updateNews(id, newsData);
 
         if (error) {
           console.error('Error updating news:', error);
@@ -207,13 +205,11 @@ export const NewsForm: React.FC = () => {
 
         toast.success('Notícia atualizada com sucesso');
       } else {
-        // Create new news
-        const { error } = await supabase
-          .from('admin_news')
-          .insert({
-            ...newsData,
-            created_at: new Date().toISOString()
-          });
+        // Create new news through secure edge function
+        const { error } = await createNews({
+          ...newsData,
+          created_at: new Date().toISOString()
+        });
 
         if (error) {
           console.error('Error creating news:', error);

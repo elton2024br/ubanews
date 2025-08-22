@@ -49,6 +49,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../supabase/config';
+import { updateNews, deleteNews } from '../api/adminNews';
 import { toast } from 'sonner';
 
 interface NewsItem {
@@ -142,10 +143,7 @@ export const NewsList: React.FC = () => {
     if (!newsToDelete) return;
 
     try {
-      const { error } = await supabase
-        .from('admin_news')
-        .delete()
-        .eq('id', newsToDelete.id);
+      const { error } = await deleteNews(newsToDelete.id);
 
       if (error) {
         console.error('Error deleting news:', error);
@@ -171,10 +169,7 @@ export const NewsList: React.FC = () => {
         updateData.published_at = new Date().toISOString();
       }
 
-      const { error } = await supabase
-        .from('admin_news')
-        .update(updateData)
-        .eq('id', newsId);
+      const { error } = await updateNews(newsId, updateData);
 
       if (error) {
         console.error('Error updating news status:', error);
