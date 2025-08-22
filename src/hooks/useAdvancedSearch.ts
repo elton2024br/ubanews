@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { announceToScreenReader } from '@/utils/accessibility';
+import { supabase } from '@/lib/supabaseClient';
 
 interface SearchFilter {
   id: string;
@@ -37,46 +38,6 @@ interface UseAdvancedSearchOptions {
   pageSize?: number;
   enableAutoSearch?: boolean;
 }
-
-// Mock search results for demonstration
-const mockResults: SearchResult[] = [
-  {
-    id: '1',
-    title: 'Nova trilha ecológica inaugurada na Praia do Félix',
-    summary: 'Trilha de 2km oferece vista panorâmica da costa e promove turismo sustentável em Ubatuba.',
-    category: 'Turismo',
-    author: 'Maria Silva',
-    publishedAt: '2024-01-15T10:30:00Z',
-    imageUrl: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=ecological%20trail%20beach%20ubatuba%20brazil%20nature&image_size=landscape_4_3',
-    tags: ['ecoturismo', 'trilha', 'sustentabilidade'],
-    readTime: 3,
-    views: 1250
-  },
-  {
-    id: '2',
-    title: 'Festival de Inverno movimenta centro histórico',
-    summary: 'Evento cultural reúne artistas locais e atrai milhares de visitantes para Ubatuba.',
-    category: 'Cultura',
-    author: 'João Santos',
-    publishedAt: '2024-01-14T15:45:00Z',
-    imageUrl: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=winter%20festival%20historic%20center%20ubatuba%20cultural%20event&image_size=landscape_4_3',
-    tags: ['festival', 'cultura', 'música'],
-    readTime: 4,
-    views: 2100
-  },
-  {
-    id: '3',
-    title: 'Projeto de preservação marinha ganha reconhecimento',
-    summary: 'Iniciativa local para proteção dos corais recebe prêmio nacional de sustentabilidade.',
-    category: 'Meio Ambiente',
-    author: 'Ana Costa',
-    publishedAt: '2024-01-13T09:15:00Z',
-    imageUrl: 'https://trae-api-us.mchost.guru/api/ide/v1/text_to_image?prompt=marine%20conservation%20coral%20reef%20ubatuba%20ocean%20protection&image_size=landscape_4_3',
-    tags: ['meio ambiente', 'conservação', 'oceano'],
-    readTime: 5,
-    views: 890
-  }
-];
 
 export const useAdvancedSearch = (options: UseAdvancedSearchOptions = {}) => {
   const {
@@ -145,100 +106,69 @@ export const useAdvancedSearch = (options: UseAdvancedSearchOptions = {}) => {
     }
   }, [searchHistory, recentSearches]);
 
-  // Mock search function - in real app, this would call an API
-  const performSearch = useCallback(async (
-    query: string,
-    filters: SearchFilter[],
-    page: number = 1
-  ) => {
-    setSearchState(prev => ({
-      ...prev,
-      isLoading: true,
-      error: null,
-      ...(page === 1 && { results: [] })
-    }));
+  // Search function that queries Supabase
+  const performSearch = useCallback(
+    async (
+      query: string,
+      filters: SearchFilter[],
+      page: number = 1
+    ) => {
+      setSearchState(prev => ({
+        ...prev,
+        isLoading: true,
+        error: null,
+        ...(page === 1 && { results: [] })
+      }));
 
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      try {
+        const category = filters.find(f => f.type === 'category')?.value;
+        const date_range = filters.find(f => f.type === 'date')?.value;
+        const author = filters.find(f => f.type === 'author')?.value;
+        const tags = filters.filter(f => f.type === 'tag').map(f => f.value);
 
-      // Filter mock results based on query and filters
-      let filteredResults = mockResults;
+        const { data, error } = await supabase.rpc('search_news', {
+          term: query,
+          category,
+          date_range,
+          author,
+          tags
+        });
 
-      if (query.trim()) {
-        const searchTerm = query.toLowerCase();
-        filteredResults = mockResults.filter(result =>
-          result.title.toLowerCase().includes(searchTerm) ||
-          result.summary.toLowerCase().includes(searchTerm) ||
-          result.category.toLowerCase().includes(searchTerm) ||
-          result.tags.some(tag => tag.toLowerCase().includes(searchTerm))
-        );
-      }
+        if (error) throw error;
 
-      // Apply filters
-      filters.forEach(filter => {
-        switch (filter.type) {
-          case 'category': {
-            filteredResults = filteredResults.filter(result =>
-              result.category.toLowerCase() === filter.value.toLowerCase()
-            );
-            break;
-          }
-          case 'date': {
-            // Mock date filtering - in real app, would parse filter.value
-            const now = new Date();
-            const filterDate = new Date(now.getTime() - (parseInt(filter.value.replace(/\D/g, '')) * 24 * 60 * 60 * 1000));
-            filteredResults = filteredResults.filter(result =>
-              new Date(result.publishedAt) >= filterDate
-            );
-            break;
-          }
-          case 'tag': {
-            filteredResults = filteredResults.filter(result =>
-              result.tags.includes(filter.value)
-            );
-            break;
-          }
+        const results = (data ?? []) as SearchResult[];
+        const hasMore = results.length === pageSize;
+
+        setSearchState(prev => ({
+          ...prev,
+          results: page === 1 ? results : [...prev.results, ...results],
+          isLoading: false,
+          totalResults: results.length,
+          currentPage: page,
+          hasMore
+        }));
+
+        if (query.trim()) {
+          saveSearchToHistory(query);
         }
-      });
 
-      // Pagination
-      const startIndex = (page - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedResults = filteredResults.slice(startIndex, endIndex);
-      const hasMore = endIndex < filteredResults.length;
-
-      setSearchState(prev => ({
-        ...prev,
-        results: page === 1 ? paginatedResults : [...prev.results, ...paginatedResults],
-        isLoading: false,
-        totalResults: filteredResults.length,
-        currentPage: page,
-        hasMore
-      }));
-
-      // Save successful search to history
-      if (query.trim()) {
-        saveSearchToHistory(query);
+        const resultCount = results.length;
+        announceToScreenReader(
+          resultCount === 0
+            ? 'Nenhum resultado encontrado'
+            : `${resultCount} resultado${resultCount !== 1 ? 's' : ''} encontrado${resultCount !== 1 ? 's' : ''}`
+        );
+      } catch (error) {
+        setSearchState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: 'Erro ao realizar busca. Tente novamente.'
+        }));
+        announceToScreenReader('Erro ao realizar busca');
       }
-
-      // Announce results to screen readers
-      const resultCount = filteredResults.length;
-      announceToScreenReader(
-        resultCount === 0
-          ? 'Nenhum resultado encontrado'
-          : `${resultCount} resultado${resultCount !== 1 ? 's' : ''} encontrado${resultCount !== 1 ? 's' : ''}`
-      );
-
-    } catch (error) {
-      setSearchState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: 'Erro ao realizar busca. Tente novamente.'
-      }));
-      announceToScreenReader('Erro ao realizar busca');
-    }
-  }, [pageSize, saveSearchToHistory]);
+    },
+    [pageSize, saveSearchToHistory]
+  );
 
   // Search function
   const search = useCallback((query: string, filters: SearchFilter[] = []) => {
