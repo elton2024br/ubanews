@@ -40,7 +40,53 @@ const usersToCreate = [
   }
 ];
 
+async function deleteTestUsers() {
+  console.log('Iniciando exclusão de usuários de teste...');
+
+  const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+
+  if (listError) {
+    console.error('Erro ao listar usuários:', listError.message);
+    return;
+  }
+
+  const testUserEmails = usersToCreate.map(u => u.email);
+  const usersToDelete = users.filter(u => testUserEmails.includes(u.email));
+
+  for (const user of usersToDelete) {
+    try {
+      const { data: adminUser, error: getAdminError } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+
+      if (getAdminError && getAdminError.code !== 'PGRST116') { // Ignore if user not in admin_users
+        console.error(`Erro ao buscar admin_user para ${user.email}:`, getAdminError.message);
+      } else if (adminUser) {
+        const { error: auditDeleteError } = await supabase
+          .from('audit_logs')
+          .delete()
+          .eq('user_id', adminUser.id);
+        if (auditDeleteError) console.error(`Erro ao excluir logs de auditoria para ${user.email}:`, auditDeleteError.message);
+      }
+
+      const { error: adminDeleteError } = await supabase.from('admin_users').delete().eq('email', user.email);
+      if (adminDeleteError) console.error(`Erro ao excluir de admin_users para ${user.email}:`, adminDeleteError.message);
+
+      const { error: authDeleteError } = await supabase.auth.admin.deleteUser(user.id);
+      if (authDeleteError) console.error(`Erro ao excluir de auth.users para ${user.email}:`, authDeleteError.message);
+      else console.log(`Usuário ${user.email} excluído com sucesso.`);
+
+    } catch (error) {
+      console.error(`Erro geral ao excluir usuário ${user.email}:`, error.message);
+    }
+  }
+}
+
 async function createAuthUsers() {
+  await deleteTestUsers();
+
   console.log('Iniciando criação de usuários de teste...');
   
   for (const user of usersToCreate) {

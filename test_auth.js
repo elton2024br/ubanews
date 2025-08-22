@@ -11,7 +11,7 @@ async function testAuth() {
   try {
     // Testar login com admin@ubanews.com
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email: 'colunista@ubanews.com',
+    email: 'admin@ubatuba.gov.br',
     password: 'admin123'
   });
     

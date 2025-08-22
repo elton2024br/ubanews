@@ -12,7 +12,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 
 async function createAdminUser() {
   try {
-    console.log('Verificando usuário admin@ubanews.com...');
+    console.log('Verificando usuário admin@ubatuba.gov.br...');
     
     // Primeiro, verificar se o usuário já existe
     const { data: users, error: listError } = await supabase.auth.admin.listUsers();
@@ -22,7 +22,7 @@ async function createAdminUser() {
     }
     
     let authUser;
-    const existingUser = users.users.find(u => u.email === 'admin@ubanews.com');
+    const existingUser = users.users.find(u => u.email === 'admin@ubatuba.gov.br');
     
     if (existingUser) {
       console.log('Usuário já existe, atualizando senha...');
@@ -63,7 +63,7 @@ async function createAdminUser() {
     const { data: existingAdmin, error: checkError } = await supabase
       .from('admin_users')
       .select('*')
-      .eq('email', 'admin@ubanews.com')
+      .eq('email', 'admin@ubatuba.gov.br')
       .single();
 
     if (checkError && checkError.code !== 'PGRST116') {
@@ -76,7 +76,7 @@ async function createAdminUser() {
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
         .insert({
-          email: 'admin@ubanews.com',
+          email: 'admin@ubatuba.gov.br',
           full_name: 'Administrador Sistema',
           role: 'admin',
           is_active: true,
@@ -95,7 +95,7 @@ async function createAdminUser() {
       console.log('Usuário já existe em admin_users:', existingAdmin.email);
     }
 
-    console.log('Usuário admin@ubanews.com criado com sucesso!');
+    console.log('Usuário admin@ubatuba.gov.br processado com sucesso!');
 
   } catch (error) {
     console.error('Erro geral:', error.message);
