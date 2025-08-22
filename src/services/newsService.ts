@@ -60,6 +60,10 @@ class NewsService {
 
   private addToCache(key: string, data: NewsArticle[], ttl: number = this.DEFAULT_TTL) {
     // Implement LRU-like behavior
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+
     if (this.cache.size >= this.MAX_CACHE_SIZE) {
       const firstKey = this.cache.keys().next().value;
       this.cache.delete(firstKey);
@@ -204,6 +208,10 @@ class NewsService {
       // Check cache first
       const cachedEntry = this.cache.get(cacheKey);
       if (cachedEntry && this.isValidCacheEntry(cachedEntry)) {
+        // Move the accessed item to the end to mark it as recently used
+        this.cache.delete(cacheKey);
+        this.cache.set(cacheKey, cachedEntry);
+
         const responseTime = Date.now() - startTime;
         this.updateStats(responseTime, true);
         return {
