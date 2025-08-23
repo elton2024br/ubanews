@@ -10,9 +10,23 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { User } from "../types/admin";
 
 const Users = () => {
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<User | null>(null);
+
+  const handleOpenDialog = (user: User | null = null) => {
+    setUserToEdit(user);
+    setIsUserDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsUserDialogOpen(false);
+    setUserToEdit(null);
+  };
+
+  const isEditing = !!userToEdit;
 
   return (
     <>
@@ -24,7 +38,7 @@ const Users = () => {
               Adicione, edite e gerencie os usuários do sistema.
             </p>
           </div>
-          <Button onClick={() => setIsFormOpen(true)}>
+          <Button onClick={() => handleOpenDialog()}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Adicionar Usuário
           </Button>
@@ -36,19 +50,26 @@ const Users = () => {
         </div>
 
         <div>
-          <UserTable />
+          <UserTable onEditUser={handleOpenDialog} />
         </div>
       </div>
 
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => {
+          // This prevents closing the dialog on background click if a sub-dialog (like a select) is open
+          if (e.target instanceof HTMLElement && e.target.closest('[data-radix-popper-content-wrapper]')) {
+            e.preventDefault();
+          }
+        }}>
           <DialogHeader>
-            <DialogTitle>Adicionar Novo Usuário</DialogTitle>
+            <DialogTitle>{isEditing ? "Editar Usuário" : "Adicionar Novo Usuário"}</DialogTitle>
             <DialogDescription>
-              Preencha os detalhes abaixo para criar um novo usuário.
+              {isEditing
+                ? "Edite os detalhes do usuário abaixo."
+                : "Preencha os detalhes abaixo para criar um novo usuário."}
             </DialogDescription>
           </DialogHeader>
-          <UserForm onClose={() => setIsFormOpen(false)} />
+          <UserForm initialData={userToEdit} onClose={handleCloseDialog} />
         </DialogContent>
       </Dialog>
     </>

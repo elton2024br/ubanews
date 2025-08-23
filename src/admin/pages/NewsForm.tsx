@@ -111,7 +111,6 @@ export const NewsForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newsItem, setNewsItem] = useState<NewsItem | null>(null);
-  const [previewMode, setPreviewMode] = useState(false);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -325,6 +324,18 @@ export const NewsForm: React.FC = () => {
     navigate('/admin/news');
   };
 
+  const handlePreview = () => {
+    const values = form.getValues();
+    const previewData = {
+      ...values,
+      tags: values.tags ? values.tags.split(',').map(tag => tag.trim()) : [],
+      created_at: newsItem?.created_at || new Date().toISOString(),
+      id: id || 'preview-id',
+    };
+    sessionStorage.setItem('news_preview_data', JSON.stringify(previewData));
+    window.open('/news/preview', '_blank');
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'published':
@@ -366,77 +377,6 @@ export const NewsForm: React.FC = () => {
     );
   }
 
-  if (previewMode) {
-    return (
-      <div className="space-y-6">
-        {/* Preview Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="outline" onClick={() => setPreviewMode(false)}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar à edição
-            </Button>
-            <h1 className="text-2xl font-bold">Pré-visualização</h1>
-          </div>
-          {getStatusBadge(watchedValues.status)}
-        </div>
-
-        {/* Preview Content */}
-        <Card>
-          <CardContent className="p-8">
-            {watchedValues.featured_image_url && (
-              <img
-                src={watchedValues.featured_image_url}
-                alt={watchedValues.title}
-                className="w-full h-64 object-cover rounded-lg mb-6"
-              />
-            )}
-            
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                <div className="flex items-center space-x-1">
-                  <User className="h-4 w-4" />
-                  <span>{watchedValues.author_name}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>{new Date().toLocaleDateString('pt-BR')}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Tag className="h-4 w-4" />
-                  <span>{watchedValues.category}</span>
-                </div>
-              </div>
-              
-              <h1 className="text-3xl font-bold">{watchedValues.title}</h1>
-              
-              {watchedValues.summary && (
-                <p className="text-lg text-gray-600 italic border-l-4 border-blue-500 pl-4">
-                  {watchedValues.summary}
-                </p>
-              )}
-              
-              <div
-                className="prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: watchedValues.content }}
-              />
-              
-              {watchedValues.tags && (
-                <div className="flex flex-wrap gap-2 pt-4 border-t">
-                  {watchedValues.tags.split(',').map((tag, index) => (
-                    <Badge key={index} variant="secondary">
-                      {tag.trim()}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -464,7 +404,7 @@ export const NewsForm: React.FC = () => {
           )}
           <Button
             variant="outline"
-            onClick={() => setPreviewMode(true)}
+            onClick={handlePreview}
             disabled={!watchedValues.title || !stripHtml(watchedValues.content)}
           >
             <Eye className="w-4 h-4 mr-2" />

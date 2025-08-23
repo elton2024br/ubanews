@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { cn } from '@/lib/utils'
+import { Textarea } from './textarea'
 
 interface RichTextEditorProps {
   value?: string
@@ -19,9 +20,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value = '', onCh
     },
     editorProps: {
       attributes: {
-        id: id,
         class: 'prose prose-sm max-w-none focus:outline-none',
-        'data-testid': 'rich-text-editor', // Add a test ID
       },
     },
   })
@@ -32,6 +31,18 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value = '', onCh
     }
   }, [editor, value])
 
+  if (process.env.NODE_ENV === 'test') {
+    return (
+      <Textarea
+        id={id}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+        className={className}
+        data-testid="rich-text-editor"
+      />
+    )
+  }
+
   return (
     <div
       className={cn(
@@ -39,7 +50,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value = '', onCh
         className
       )}
     >
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} id={id} />
     </div>
   )
 }

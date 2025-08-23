@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,6 +10,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,10 +22,11 @@ import {
 } from '@/components/ui/select';
 import { User } from '../../types/admin';
 import { useCreateUser } from '../../hooks/useCreateUser';
+import { useUpdateUser } from '../../hooks/useUpdateUser';
 import { Loader2 } from 'lucide-react';
 
 interface UserFormProps {
-  user?: User | null;
+  initialData?: User | null;
   onClose: () => void;
 }
 
@@ -32,12 +34,21 @@ const userFormSchema = z.object({
   name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
   email: z.string().email({ message: "Por favor, insira um email válido." }),
   role: z.enum(['admin', 'editor', 'columnist'], { required_error: "Selecione uma role." }),
-  password: z.string().min(8, { message: "A senha deve ter pelo menos 8 caracteres." }),
+  password: z.string().optional(),
 });
 
-type UserFormValues = z.infer<typeof userFormSchema>;
+const getDynamicSchema = (isEditing: boolean) => {
+  return isEditing
+    ? userFormSchema.extend({
+        password: z.string().min(8, { message: "A senha deve ter pelo menos 8 caracteres." }).optional().or(z.literal('')),
+      })
+    : userFormSchema.extend({
+        password: z.string().min(8, { message: "A senha deve ter pelo menos 8 caracteres." }),
+      });
+};
 
-// Helper to generate a random password
+type UserFormValues = z.infer<ReturnType<typeof getDynamicSchema>>;
+
 const generatePassword = () => {
   const length = 12;
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
@@ -48,31 +59,62 @@ const generatePassword = () => {
   return retVal;
 };
 
-const UserForm: React.FC<UserFormProps> = ({ user, onClose }) => {
+const UserForm: React.FC<UserFormProps> = ({ initialData, onClose }) => {
+  const isEditing = !!initialData;
   const createUserMutation = useCreateUser();
+  const updateUserMutation = useUpdateUser();
 
   const form = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema),
+    resolver: zodResolver(getDynamicSchema(isEditing)),
     defaultValues: {
-      name: user?.name || '',
-      email: user?.email || '',
-      role: user?.role || 'columnist',
+      name: initialData?.name || '',
+      email: initialData?.email || '',
+      role: initialData?.role || 'columnist',
       password: '',
     },
   });
 
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        name: initialData.name,
+        email: initialData.email,
+        role: initialData.role,
+        password: '',
+      });
+    } else {
+      form.reset({
+        name: '',
+        email: '',
+        role: 'columnist',
+        password: '',
+      });
+    }
+  }, [initialData, form]);
+
   const onSubmit = (data: UserFormValues) => {
-    createUserMutation.mutate(data, {
-      onSuccess: () => {
-        onClose(); // Close the dialog on success
-      },
-    });
+    const mutationData = { ...data };
+    if (isEditing && !mutationData.password) {
+      delete mutationData.password;
+    }
+
+    if (isEditing && initialData) {
+      updateUserMutation.mutate({ id: initialData.id, ...mutationData }, {
+        onSuccess: () => onClose(),
+      });
+    } else {
+      createUserMutation.mutate(mutationData, {
+        onSuccess: () => onClose(),
+      });
+    }
   };
+
+  const isPending = createUserMutation.isPending || updateUserMutation.isPending;
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <fieldset disabled={createUserMutation.isPending} className="space-y-6">
+        <fieldset disabled={isPending} className="space-y-6">
           <FormField
             control={form.control}
             name="name"
@@ -126,7 +168,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose }) => {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Senha</FormLabel>
+                <FormLabel>{isEditing ? 'Nova Senha' : 'Senha'}</FormLabel>
                 <FormControl>
                   <div className="flex gap-2">
                     <Input type="password" placeholder="********" {...field} />
@@ -135,6 +177,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose }) => {
                     </Button>
                   </div>
                 </FormControl>
+                {isEditing && <FormDescription>Deixe em branco para não alterar a senha.</FormDescription>}
                 <FormMessage />
               </FormItem>
             )}
@@ -143,14 +186,14 @@ const UserForm: React.FC<UserFormProps> = ({ user, onClose }) => {
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={createUserMutation.isPending}>
-              {createUserMutation.isPending ? (
+            <Button type="submit" disabled={isPending}>
+              {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Salvando...
                 </>
               ) : (
-                user ? 'Salvar Alterações' : 'Criar Usuário'
+                isEditing ? 'Salvar Alterações' : 'Criar Usuário'
               )}
             </Button>
           </div>

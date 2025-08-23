@@ -6,7 +6,7 @@ import { vi } from 'vitest';
 import { NewsArticle } from '@/shared/types/news';
 
 // Create a custom render function that includes providers
-const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
+export const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {

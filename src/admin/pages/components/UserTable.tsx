@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useUsers } from '../../hooks/useUsers';
 import {
   Table,
@@ -19,9 +19,38 @@ import {
 import { MoreHorizontal, Edit, ToggleLeft, ToggleRight, Trash2, Loader2 } from "lucide-react";
 import { format } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { User } from '@/admin/types/admin';
+import { useDeleteUser } from '../../hooks/useDeleteUser';
+import { useToggleUserStatus } from '../../hooks/useToggleUserStatus';
+import DeleteUserDialog from './DeleteUserDialog';
 
-const UserTable: React.FC = () => {
+interface UserTableProps {
+  onEditUser: (user: User) => void;
+}
+
+const UserTable: React.FC<UserTableProps> = ({ onEditUser }) => {
   const { data: users, isLoading, error } = useUsers();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+
+  const deleteUserMutation = useDeleteUser();
+  const toggleUserStatusMutation = useToggleUserStatus();
+
+  const handleDeleteClick = (user: User) => {
+    setUserToDelete(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (userToDelete) {
+      deleteUserMutation.mutate(userToDelete.id, {
+        onSuccess: () => {
+          setIsDeleteDialogOpen(false);
+          setUserToDelete(null);
+        },
+      });
+    }
+  };
 
   const getRoleBadgeVariant = (role: 'admin' | 'editor' | 'columnist') => {
     switch (role) {
@@ -103,11 +132,11 @@ const UserTable: React.FC = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onEditUser(user)}>
                       <Edit className="mr-2 h-4 w-4" />
                       Editar
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => toggleUserStatusMutation.mutate(user.id)}>
                       {user.is_active ? (
                         <ToggleLeft className="mr-2 h-4 w-4" />
                       ) : (
@@ -115,7 +144,10 @@ const UserTable: React.FC = () => {
                       )}
                       {user.is_active ? 'Desativar' : 'Ativar'}
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-600">
+                    <DropdownMenuItem
+                      className="text-red-600"
+                      onSelect={() => handleDeleteClick(user)}
+                    >
                       <Trash2 className="mr-2 h-4 w-4" />
                       Excluir
                     </DropdownMenuItem>
@@ -126,6 +158,13 @@ const UserTable: React.FC = () => {
           ))}
         </TableBody>
       </Table>
+      <DeleteUserDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        user={userToDelete}
+        isPending={deleteUserMutation.isPending}
+      />
     </div>
   );
 };

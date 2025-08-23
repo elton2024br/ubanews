@@ -33,6 +33,7 @@ const AdminLayout = lazy(() => import("./admin/layout/AdminLayout"));
 const Dashboard = lazy(() => import("./admin/pages/Dashboard"));
 const NewsList = lazy(() => import("./admin/pages/NewsList"));
 const NewsForm = lazy(() => import("./admin/pages/NewsForm"));
+const NewsPreview = lazy(() => import("./pages/NewsPreview"));
 const Approvals = lazy(() => import("./admin/pages/Approvals"));
 const Reports = lazy(() => import("./admin/pages/Reports"));
 const Performance = lazy(() => import("./admin/pages/Performance"));
@@ -103,6 +104,7 @@ const App = () => {
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Navigate to="/admin/login" replace />} />
+                  <Route path="/news/preview" element={<NewsPreview />} />
                   <Route path="/news/:id" element={<NewsPage />} />
                   <Route path="/search" element={<SearchResultsLazy />} />
                   <Route path="/about" element={<AboutLazy />} />

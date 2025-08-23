@@ -109,3 +109,20 @@ export interface AdminContextType {
   logout: () => void;
   hasPermission: (resource: string, action: string) => boolean;
 }
+
+export type UserCreationPayload = Omit<User, 'id' | 'is_active' | 'two_factor_enabled' | 'created_at' | 'updated_at' | 'last_login' | 'permissions' | 'avatar'> & {
+  password?: string;
+};
+
+export type UserUpdatePayload = Partial<UserCreationPayload>;
+
+
+export type Settings = {
+  id: number;
+  site_title: string;
+  site_description: string | null;
+  maintenance_mode: boolean;
+  enable_2fa_for_all: boolean;
+  notification_email: string | null;
+  updated_at: string | null;
+};

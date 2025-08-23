@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '../utils';
+import { render, screen, waitFor, within } from '../utils';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { NewsForm } from '@/admin/pages/NewsForm';
@@ -69,13 +69,20 @@ const { fromMock, insertNewsApproval } = supabaseMocks;
 const fillForm = async () => {
   await userEvent.type(screen.getByLabelText(/Título/i), 'Título de teste válido');
   await userEvent.type(screen.getByLabelText(/Resumo/i), 'Resumo de teste com caracteres suficientes.');
-  await userEvent.type(screen.getByTestId('rich-text-editor'), 'Conteúdo de teste com mais de cinquenta caracteres para passar na validação.');
 
+  // For the rich text editor, we need to find the contenteditable div
+  const richTextEditor = screen.getByLabelText(/Conteúdo/i);
+  await userEvent.type(richTextEditor, 'Conteúdo de teste com mais de cinquenta caracteres para passar na validação.');
+
+  // Open the Status select
   await userEvent.click(screen.getByRole('combobox', { name: /Status/i }));
+  // Select the 'Pendente' option
   await userEvent.click(await screen.findByText('Pendente'));
 
+  // Open the Category select
   await userEvent.click(screen.getByRole('combobox', { name: /Categoria/i }));
-  await userEvent.click(await screen.findByText('Política'));
+  // Select the 'Tecnologia' option
+  await userEvent.click(await screen.findByText('Tecnologia'));
 };
 
 describe('NewsForm', () => {

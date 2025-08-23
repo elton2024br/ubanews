@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { usePublicNews } from '../../hooks/usePublicNews';
-import { createTestWrapper } from '../utils';
+import { AllTheProviders } from '../utils';
 
 // Mock dependencies
 vi.mock('../../services/newsService', () => ({
@@ -15,16 +15,29 @@ vi.mock('../../hooks/useFeatureFlags', () => ({
   useFeatureFlags: () => ({
     isFeatureEnabled: vi.fn(),
   }),
+  useDynamicData: () => ({
+    isEnabled: true,
+    useDynamic: true,
+    useRealTime: true,
+    enableDynamicData: vi.fn(),
+    disableDynamicData: vi.fn(),
+    toggleDynamicData: vi.fn(),
+    setUseDynamic: vi.fn(),
+    setUseRealTime: vi.fn(),
+  }),
 }));
 
-vi.mock('../../hooks/useNewsCache', () => ({
-  useNewsCache: () => ({
+vi.mock('../../hooks/useNewsCache', () => {
+  const mockCache = {
     has: vi.fn(),
     get: vi.fn(),
     set: vi.fn(),
     invalidatePattern: vi.fn(),
-  }),
-}));
+  };
+  return {
+    useNewsCache: () => mockCache,
+  };
+});
 
 import NewsService from '../../services/newsService';
 import { useFeatureFlags } from '../../hooks/useFeatureFlags';
@@ -76,7 +89,7 @@ describe('usePublicNews', () => {
       });
 
       const { result } = renderHook(() => usePublicNews(), {
-        wrapper: createTestWrapper(),
+        wrapper: AllTheProviders,
       });
 
       await waitFor(() => {
@@ -84,11 +97,11 @@ describe('usePublicNews', () => {
       });
 
       expect(result.current.error).toBe(null);
-      expect(mockNewsService.getPublicNews).toHaveBeenCalledTimes(1);
+      expect(NewsService.getPublicNews).toHaveBeenCalledTimes(1);
     });
 
     it('should handle errors correctly', async () => {
-      mockNewsService.getPublicNews.mockResolvedValue({
+      vi.mocked(NewsService.getPublicNews).mockResolvedValue({
         success: false,
         data: [],
         total: 0,
@@ -97,7 +110,7 @@ describe('usePublicNews', () => {
       });
 
       const { result } = renderHook(() => usePublicNews(), {
-        wrapper: createTestWrapper(),
+        wrapper: AllTheProviders,
       });
 
       await waitFor(() => {
@@ -110,7 +123,7 @@ describe('usePublicNews', () => {
 
   describe('Options and filtering', () => {
     it('should pass options to NewsService', async () => {
-      mockNewsService.getPublicNews.mockResolvedValue({
+      vi.mocked(NewsService.getPublicNews).mockResolvedValue({
         success: true,
         data: [mockNewsArticles[0]],
         total: 1,
@@ -124,18 +137,23 @@ describe('usePublicNews', () => {
       };
 
       renderHook(() => usePublicNews(options), {
-        wrapper: createTestWrapper(),
+        wrapper: AllTheProviders,
       });
 
       await waitFor(() => {
-        expect(mockNewsService.getPublicNews).toHaveBeenCalledWith(options);
+        expect(NewsService.getPublicNews).toHaveBeenCalledWith({
+          ...options,
+          offset: 0,
+          sortBy: 'created_at',
+          sortOrder: 'desc',
+        });
       });
     });
   });
 
   describe('Refetch functionality', () => {
     it('should refetch data when refetch is called', async () => {
-      mockNewsService.getPublicNews.mockResolvedValue({
+      vi.mocked(NewsService.getPublicNews).mockResolvedValue({
         success: true,
         data: mockNewsArticles,
         total: 2,
@@ -143,20 +161,20 @@ describe('usePublicNews', () => {
       });
 
       const { result } = renderHook(() => usePublicNews(), {
-        wrapper: createTestWrapper(),
+        wrapper: AllTheProviders,
       });
 
       await waitFor(() => {
         expect(result.current.data).toEqual(mockNewsArticles);
       });
 
-      expect(mockNewsService.getPublicNews).toHaveBeenCalledTimes(1);
+      expect(NewsService.getPublicNews).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('Load more functionality', () => {
     it('should load more data when loadMore is called', async () => {
-      mockNewsService.getPublicNews.mockResolvedValue({
+      vi.mocked(NewsService.getPublicNews).mockResolvedValue({
         success: true,
         data: mockNewsArticles,
         total: 2,
@@ -164,40 +182,41 @@ describe('usePublicNews', () => {
       });
 
       const { result } = renderHook(() => usePublicNews({ limit: 1 }), {
-        wrapper: createTestWrapper(),
+        wrapper: AllTheProviders,
       });
 
       await waitFor(() => {
         expect(result.current.data).toEqual(mockNewsArticles);
       });
 
-      expect(mockNewsService.getPublicNews).toHaveBeenCalledTimes(1);
+      expect(NewsService.getPublicNews).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('Cache logic', () => {
     it('should generate cache key with offset 0', async () => {
-      mockNewsService.getPublicNews.mockResolvedValue({
+      vi.mocked(NewsService.getPublicNews).mockResolvedValue({
         success: true,
         data: mockNewsArticles,
         total: 2,
         hasMore: false,
       });
 
-      renderHook(() => usePublicNews(), { wrapper: createTestWrapper() });
+      renderHook(() => usePublicNews(), { wrapper: AllTheProviders });
 
       const key =
         'news-public-limit=10&offset=0&sortBy=created_at&sortOrder=desc';
 
+      const newsCache = useNewsCache();
       await waitFor(() => {
-        expect(mockNewsCache.set).toHaveBeenCalledWith(key, mockNewsArticles);
+        expect(newsCache.set).toHaveBeenCalledWith(key, mockNewsArticles);
       });
 
-      expect(mockNewsCache.has).toHaveBeenCalledWith(key);
+      expect(newsCache.has).toHaveBeenCalledWith(key);
     });
 
     it('should update cache key when loading more', async () => {
-      mockNewsService.getPublicNews.mockResolvedValue({
+      vi.mocked(NewsService.getPublicNews).mockResolvedValue({
         success: true,
         data: [mockNewsArticles[0]],
         total: 2,
@@ -205,14 +224,14 @@ describe('usePublicNews', () => {
       });
 
       const { result } = renderHook(() => usePublicNews({ limit: 1 }), {
-        wrapper: createTestWrapper(),
+        wrapper: AllTheProviders,
       });
 
       await waitFor(() => {
         expect(result.current.data).toEqual([mockNewsArticles[0]]);
       });
 
-      mockNewsService.getPublicNews.mockResolvedValue({
+      vi.mocked(NewsService.getPublicNews).mockResolvedValue({
         success: true,
         data: [mockNewsArticles[1]],
         total: 2,
@@ -224,9 +243,10 @@ describe('usePublicNews', () => {
       const key =
         'news-public-limit=1&offset=1&sortBy=created_at&sortOrder=desc';
 
+      const newsCache = useNewsCache();
       await waitFor(() => {
         expect(result.current.data).toEqual(mockNewsArticles);
-        expect(mockNewsCache.set).toHaveBeenLastCalledWith(
+        expect(newsCache.set).toHaveBeenLastCalledWith(
           key,
           mockNewsArticles
         );
@@ -236,7 +256,7 @@ describe('usePublicNews', () => {
 
   describe('Auto-refresh functionality', () => {
     it('should handle auto-refresh configuration', async () => {
-      mockNewsService.getPublicNews.mockResolvedValue({
+      vi.mocked(NewsService.getPublicNews).mockResolvedValue({
         success: true,
         data: mockNewsArticles,
         total: 2,
@@ -244,20 +264,20 @@ describe('usePublicNews', () => {
       });
 
       const { result } = renderHook(() => usePublicNews({ autoRefresh: true }), {
-        wrapper: createTestWrapper(),
+        wrapper: AllTheProviders,
       });
 
       await waitFor(() => {
         expect(result.current.data).toEqual(mockNewsArticles);
       });
 
-      expect(mockNewsService.getPublicNews).toHaveBeenCalledTimes(1);
+      expect(NewsService.getPublicNews).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('Window focus refetch', () => {
     it('should handle window focus configuration', async () => {
-      mockNewsService.getPublicNews.mockResolvedValue({
+      vi.mocked(NewsService.getPublicNews).mockResolvedValue({
         success: true,
         data: mockNewsArticles,
         total: 2,
@@ -265,14 +285,14 @@ describe('usePublicNews', () => {
       });
 
       const { result } = renderHook(() => usePublicNews({ refetchOnWindowFocus: true }), {
-        wrapper: createTestWrapper(),
+        wrapper: AllTheProviders,
       });
 
       await waitFor(() => {
         expect(result.current.data).toEqual(mockNewsArticles);
       });
 
-      expect(mockNewsService.getPublicNews).toHaveBeenCalledTimes(1);
+      expect(NewsService.getPublicNews).toHaveBeenCalledTimes(1);
     });
   });
 });

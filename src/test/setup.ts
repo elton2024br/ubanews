@@ -43,21 +43,34 @@ beforeAll(() => {
   window.scrollTo = vi.fn();
 
   // Mocks for ProseMirror/Tiptap which is used in RichTextEditor
-  if (typeof window.HTMLElement.prototype.getClientRects === 'undefined') {
-    window.HTMLElement.prototype.getClientRects = function() {
-      const rect = this.getBoundingClientRect();
-      return [{
-        bottom: rect.bottom,
-        height: rect.height,
-        left: rect.left,
-        right: rect.right,
-        top: rect.top,
-        width: rect.width,
-        x: rect.x,
-        y: rect.y,
-        toJSON: () => JSON.stringify(this.getBoundingClientRect())
-      }];
-    };
+  if (typeof document.createRange === 'undefined') {
+    document.createRange = () => ({
+      setEnd: () => {},
+      setStart: () => {},
+      getBoundingClientRect: () => ({
+        bottom: 0,
+        height: 0,
+        left: 0,
+        right: 0,
+        top: 0,
+        width: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ''
+      }),
+      getClientRects: () => [],
+    });
+  }
+
+  // Mocks for Radix UI components that use pointer events
+  if (typeof window.HTMLElement.prototype.hasPointerCapture === 'undefined') {
+    window.HTMLElement.prototype.hasPointerCapture = () => false;
+  }
+  if (typeof window.HTMLElement.prototype.releasePointerCapture === 'undefined') {
+    window.HTMLElement.prototype.releasePointerCapture = () => {};
+  }
+  if (typeof window.HTMLElement.prototype.setPointerCapture === 'undefined') {
+    window.HTMLElement.prototype.setPointerCapture = () => {};
   }
 
   if (typeof document.elementFromPoint === 'undefined') {
@@ -85,4 +98,39 @@ beforeAll(() => {
     writable: true,
     value: vi.fn(),
   });
+
+  // Mock for getClientRects
+  if (typeof Element.prototype.getClientRects === 'undefined') {
+    Element.prototype.getClientRects = function () {
+      const rect = this.getBoundingClientRect();
+      return [{
+        ...rect,
+        x: rect.left,
+        y: rect.top,
+        toJSON: () => JSON.stringify(rect),
+      }];
+    };
+  }
+
+  // Mock for scrollIntoView
+  if (typeof window.HTMLElement.prototype.scrollIntoView === 'undefined') {
+    window.HTMLElement.prototype.scrollIntoView = function() {};
+  }
 });
+
+// Polyfill for PointerEvents
+if (!global.PointerEvent) {
+  class PointerEvent extends MouseEvent {
+    public pointerId?: number
+    public pointerType?: string
+    public isPrimary?: boolean
+
+    constructor(type: string, params: PointerEventInit = {}) {
+      super(type, params)
+      this.pointerId = params.pointerId
+      this.pointerType = params.pointerType
+      this.isPrimary = params.isPrimary
+    }
+  }
+  global.PointerEvent = PointerEvent as any
+}

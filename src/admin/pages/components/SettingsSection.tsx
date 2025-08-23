@@ -1,75 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useFormContext } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { FormField, FormControl, FormItem, FormMessage, FormDescription } from '@/components/ui/form';
 
-type Setting = {
-  key: string;
-  value: any;
+type Field = {
+  name: any; // keyof SettingsFormValues, but use any to avoid circular deps
+  label: string;
   description: string;
-  type: 'text' | 'textarea' | 'boolean' | 'select' | 'email';
-  options?: string[];
+  type: 'text' | 'textarea' | 'switch' | 'email';
 };
 
 interface SettingsSectionProps {
   title: string;
   description: string;
-  settings: Setting[];
+  fields: Field[];
 }
 
-const SettingsSection: React.FC<SettingsSectionProps> = ({ title, description, settings }) => {
-  // We'll manage form state here temporarily for UI interaction.
-  // In a real app, this would be handled by react-hook-form passed from the parent.
-  const [formState, setFormState] = useState<Record<string, any>>({});
+const SettingsSection: React.FC<SettingsSectionProps> = ({ title, description, fields }) => {
+  const { control } = useFormContext();
 
-  useEffect(() => {
-    const initialState = settings.reduce((acc, setting) => {
-      acc[setting.key] = setting.value;
-      return acc;
-    }, {} as Record<string, any>);
-    setFormState(initialState);
-  }, [settings]);
-
-  const handleInputChange = (key: string, value: any) => {
-    setFormState(prevState => ({ ...prevState, [key]: value }));
-  };
-
-  const renderField = (setting: Setting) => {
-    const value = formState[setting.key];
-
-    switch (setting.type) {
-      case 'boolean':
-        return <Switch checked={value} onCheckedChange={(checked) => handleInputChange(setting.key, checked)} />;
-      case 'select':
+  const renderField = (fieldConfig: Field, field: any) => {
+    switch (fieldConfig.type) {
+      case 'switch':
         return (
-          <Select value={value} onValueChange={(val) => handleInputChange(setting.key, val)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {setting.options?.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center space-x-2">
+            <Switch
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
+            <Label htmlFor={fieldConfig.name}>{fieldConfig.label}</Label>
+          </div>
         );
       case 'textarea':
-        return <Textarea value={value} onChange={(e) => handleInputChange(setting.key, e.target.value)} />;
+        return <Textarea {...field} placeholder={`Digite ${fieldConfig.label.toLowerCase()}...`} />;
       case 'email':
-        return <Input type="email" value={value} onChange={(e) => handleInputChange(setting.key, e.target.value)} />;
+        return <Input type="email" {...field} placeholder="exemplo@email.com" />;
       default:
-        return <Input type="text" value={value} onChange={(e) => handleInputChange(setting.key, e.target.value)} />;
+        return <Input {...field} placeholder={`Digite ${fieldConfig.label.toLowerCase()}...`} />;
     }
   };
 
-  if (settings.length === 0) {
+  if (fields.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -89,17 +64,29 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ title, description, s
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {settings.map((setting) => (
-          <div key={setting.key} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-            <div className="md:col-span-1">
-              <Label htmlFor={setting.key}>{setting.key.replace(/_/g, ' ')}</Label>
-              <p className="text-xs text-muted-foreground">{setting.description}</p>
-            </div>
-            <div className="md:col-span-2">
-              {renderField(setting)}
-            </div>
-          </div>
+      <CardContent className="space-y-8">
+        {fields.map((fieldConfig) => (
+          <FormField
+            key={fieldConfig.name}
+            control={control}
+            name={fieldConfig.name}
+            render={({ field }) => (
+              <FormItem className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                <div className="md:col-span-1">
+                  <Label className={fieldConfig.type === 'switch' ? 'cursor-pointer' : ''} htmlFor={fieldConfig.name}>{fieldConfig.label}</Label>
+                  <FormDescription className="text-xs">
+                    {fieldConfig.description}
+                  </FormDescription>
+                </div>
+                <div className="md:col-span-2">
+                  <FormControl>
+                    {renderField(fieldConfig, field)}
+                  </FormControl>
+                  <FormMessage />
+                </div>
+              </FormItem>
+            )}
+          />
         ))}
       </CardContent>
     </Card>
