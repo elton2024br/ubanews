@@ -11,6 +11,7 @@ export { default as AdminLayout } from './layout/AdminLayout';
 // Page Components
 export { default as AdminDashboard } from './pages/AdminDashboard';
 export { default as NewsManagement } from './pages/NewsManagement';
+export { default as Audit } from './pages/Audit';
 
 // Types
 export type {
