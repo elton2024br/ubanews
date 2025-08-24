@@ -1,5 +1,5 @@
 import React from 'react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, ControllerRenderProps, FieldValues } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { FormField, FormControl, FormItem, FormMessage, FormDescription } from '@/components/ui/form';
 
 type Field = {
-  name: any; // keyof SettingsFormValues, but use any to avoid circular deps
+  name: string;
   label: string;
   description: string;
   type: 'text' | 'textarea' | 'switch' | 'email';
@@ -23,7 +23,7 @@ interface SettingsSectionProps {
 const SettingsSection: React.FC<SettingsSectionProps> = ({ title, description, fields }) => {
   const { control } = useFormContext();
 
-  const renderField = (fieldConfig: Field, field: any) => {
+  const renderField = (fieldConfig: Field, field: ControllerRenderProps<FieldValues, string>) => {
     switch (fieldConfig.type) {
       case 'switch':
         return (

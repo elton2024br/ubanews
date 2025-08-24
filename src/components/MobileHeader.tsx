@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Menu, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { MobileThemeToggle } from './ThemeToggle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import SkipLinks from './SkipLinks';
@@ -104,6 +104,9 @@ const MobileHeader = ({ onMenuToggle }: MobileHeaderProps) => {
               className="w-[280px] sm:w-[350px]"
               ref={containerRef}
             >
+              <SheetHeader>
+                <SheetTitle>Menu de Navegação</SheetTitle>
+              </SheetHeader>
               <nav 
                 className="flex flex-col space-y-4 mt-6"
                 role="navigation"

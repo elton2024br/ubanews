@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { createClient, RealtimeChannel } from '@supabase/supabase-js';
+import { createClient, RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { NewsArticle } from '@/shared/types/news';
 import { useFeatureFlags } from './useFeatureFlags';
 
@@ -16,6 +16,12 @@ interface SyncStats {
   updateCount: number;
   deleteCount: number;
   lastUpdate: number | null;
+}
+
+interface RealtimePayload {
+  new?: NewsArticle;
+  old?: NewsArticle;
+  eventType?: string;
 }
 
 interface UseNewsSyncResult {
@@ -42,7 +48,7 @@ export function useNewsSync(): UseNewsSyncResult {
   });
   
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const clientRef = useRef<any>(null);
+  const clientRef = useRef<SupabaseClient | null>(null);
   const { isEnabled } = useFeatureFlags();
   const isRealtimeSyncEnabled = isEnabled('ENABLE_REAL_TIME_SYNC');
 
@@ -92,15 +98,15 @@ export function useNewsSync(): UseNewsSyncResult {
         channel
           .on('postgres_changes', 
             { event: 'INSERT', schema: 'public', table: 'news' },
-            (payload: any) => handleRealtimeUpdate('INSERT', payload)
+            (payload: RealtimePayload) => handleRealtimeUpdate('INSERT', payload)
           )
           .on('postgres_changes',
             { event: 'UPDATE', schema: 'public', table: 'news' },
-            (payload: any) => handleRealtimeUpdate('UPDATE', payload)
+            (payload: RealtimePayload) => handleRealtimeUpdate('UPDATE', payload)
           )
           .on('postgres_changes',
             { event: 'DELETE', schema: 'public', table: 'news' },
-            (payload: any) => handleRealtimeUpdate('DELETE', payload)
+            (payload: RealtimePayload) => handleRealtimeUpdate('DELETE', payload)
           )
           .subscribe((status: string) => {
             if (status === 'SUBSCRIBED') {
@@ -131,7 +137,7 @@ export function useNewsSync(): UseNewsSyncResult {
   }, [isRealtimeSyncEnabled]);
 
   // Handle realtime updates
-  const handleRealtimeUpdate = useCallback((type: 'INSERT' | 'UPDATE' | 'DELETE', payload: any) => {
+  const handleRealtimeUpdate = useCallback((type: 'INSERT' | 'UPDATE' | 'DELETE', payload: RealtimePayload) => {
     try {
       const update: NewsUpdate = {
         id: payload.new?.id || payload.old?.id || `${type}-${Date.now()}`,
@@ -179,15 +185,15 @@ export function useNewsSync(): UseNewsSyncResult {
         channel
           .on('postgres_changes', 
             { event: 'INSERT', schema: 'public', table: 'news' },
-            (payload: any) => handleRealtimeUpdate('INSERT', payload)
+            (payload: RealtimePayload) => handleRealtimeUpdate('INSERT', payload)
           )
           .on('postgres_changes',
             { event: 'UPDATE', schema: 'public', table: 'news' },
-            (payload: any) => handleRealtimeUpdate('UPDATE', payload)
+            (payload: RealtimePayload) => handleRealtimeUpdate('UPDATE', payload)
           )
           .on('postgres_changes',
             { event: 'DELETE', schema: 'public', table: 'news' },
-            (payload: any) => handleRealtimeUpdate('DELETE', payload)
+            (payload: RealtimePayload) => handleRealtimeUpdate('DELETE', payload)
           )
           .subscribe((status: string) => {
             if (status === 'SUBSCRIBED') {

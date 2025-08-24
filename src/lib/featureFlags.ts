@@ -7,7 +7,6 @@ export interface FeatureFlags {
   USE_DYNAMIC_DATA: boolean;
   ENABLE_REAL_TIME_SYNC: boolean;
   ENABLE_ADVANCED_CACHE: boolean;
-  ENABLE_PERFORMANCE_MONITORING: boolean;
   ENABLE_ERROR_REPORTING: boolean;
   ENABLE_ANALYTICS: boolean;
 }
@@ -17,7 +16,6 @@ const DEFAULT_FLAGS: FeatureFlags = {
   USE_DYNAMIC_DATA: false, // Inicia com dados estáticos
   ENABLE_REAL_TIME_SYNC: false,
   ENABLE_ADVANCED_CACHE: true,
-  ENABLE_PERFORMANCE_MONITORING: true,
   ENABLE_ERROR_REPORTING: true,
   ENABLE_ANALYTICS: false,
 };
@@ -220,6 +218,6 @@ export const useAdvancedCache = (): boolean => {
 
 // Expor para debug no console (apenas em desenvolvimento)
 if (import.meta.env.DEV) {
-  (window as any).featureFlags = featureFlags;
+  (window as Window & { featureFlags: FeatureFlagManager }).featureFlags = featureFlags;
   console.log('🚀 Feature Flags disponíveis no console: window.featureFlags');
 }

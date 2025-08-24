@@ -1,8 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 
-const supabaseUrl = 'https://bejqfsqpvpxtqszeyyfo.supabase.co';
-const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlanFmc3FwdnB4dHFzemV5eWZvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTE5NzkwNCwiZXhwIjoyMDcwNzczOTA0fQ.IvA0k2wf9Gw7yayV19Ru1HT4kfaprepGWyYZumLfNQ4';
+// Carregar variáveis de ambiente
+dotenv.config();
 
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Variáveis de ambiente do Supabase não encontradas');
+  console.log('Certifique-se de que VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY estão definidas no .env');
+  process.exit(1);
+}
+
+// Criar cliente Supabase com service role key para operações administrativas
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
@@ -11,95 +22,89 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 async function createAdminUser() {
+  console.log('🔧 Criando usuário administrativo no Supabase Auth...');
+  
+  const adminEmail = 'admin@ubatuba.gov.br';
+  const adminPassword = 'admin123';
+  
   try {
-    console.log('Verificando usuário admin@ubanews.com...');
+    // 1. Criar usuário no Supabase Auth
+    console.log('📝 Criando usuário no Auth...');
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email: adminEmail,
+      password: adminPassword,
+      email_confirm: true // Confirmar email automaticamente
+    });
     
-    // Primeiro, verificar se o usuário já existe
-    const { data: users, error: listError } = await supabase.auth.admin.listUsers();
-    if (listError) {
-      console.error('Erro ao listar usuários:', listError.message);
-      return;
-    }
-    
-    let authUser;
-    const existingUser = users.users.find(u => u.email === 'admin@ubanews.com');
-    
-    if (existingUser) {
-      console.log('Usuário já existe, atualizando senha...');
-      
-      // Atualizar senha
-      const { data: updateData, error: updateError } = await supabase.auth.admin.updateUserById(
-        existingUser.id,
-        { password: 'admin123' }
-      );
-      
-      if (updateError) {
-        console.error('Erro ao atualizar senha:', updateError.message);
-        return;
+    if (authError) {
+      if (authError.message.includes('already registered')) {
+        console.log('ℹ️  Usuário já existe no Auth, continuando...');
+      } else {
+        throw authError;
       }
-      
-      authUser = updateData;
-      console.log('Senha atualizada para:', authUser.user.email);
     } else {
-      console.log('Criando novo usuário...');
-      
-      // Criar usuário no auth.users
-      const { data: createData, error: createError } = await supabase.auth.admin.createUser({
-        email: 'admin@ubanews.com',
-        password: 'admin123',
-        email_confirm: true
-      });
-      
-      if (createError) {
-        console.error('Erro ao criar usuário no auth:', createError.message);
-        return;
-      }
-      
-      authUser = createData;
-      console.log('Usuário criado no auth.users:', authUser.user.email);
+      console.log('✅ Usuário criado no Auth:', authUser.user?.email);
     }
-
-    // Verificar se já existe na tabela admin_users
-    const { data: existingAdmin, error: checkError } = await supabase
+    
+    // 2. Verificar se o usuário já existe na tabela admin_users
+    console.log('🔍 Verificando usuário na tabela admin_users...');
+    const { data: existingUser, error: checkError } = await supabase
       .from('admin_users')
       .select('*')
-      .eq('email', 'admin@ubanews.com')
+      .eq('email', adminEmail)
       .single();
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Erro ao verificar admin_users:', checkError.message);
-      return;
+    
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = not found
+      throw checkError;
     }
-
-    if (!existingAdmin) {
-      // Inserir na tabela admin_users
-      const { data: adminData, error: adminError } = await supabase
+    
+    if (existingUser) {
+      console.log('ℹ️  Usuário já existe na tabela admin_users');
+      console.log('📊 Dados do usuário:', {
+        id: existingUser.id,
+        email: existingUser.email,
+        full_name: existingUser.full_name,
+        role: existingUser.role,
+        status: existingUser.status
+      });
+    } else {
+      // 3. Criar registro na tabela admin_users
+      console.log('📝 Criando registro na tabela admin_users...');
+      const { data: adminUserData, error: insertError } = await supabase
         .from('admin_users')
         .insert({
-          email: 'admin@ubanews.com',
-          full_name: 'Administrador Sistema',
+          email: adminEmail,
+          full_name: 'Administrador do Sistema',
           role: 'admin',
-          is_active: true,
-          two_factor_enabled: false
+          status: 'active',
+          permissions: ['read', 'write', 'delete', 'manage_users', 'manage_news', 'manage_system']
         })
         .select()
         .single();
-
-      if (adminError) {
-        console.error('Erro ao inserir em admin_users:', adminError.message);
-        return;
+      
+      if (insertError) {
+        throw insertError;
       }
-
-      console.log('Usuário inserido em admin_users:', adminData.email);
-    } else {
-      console.log('Usuário já existe em admin_users:', existingAdmin.email);
+      
+      console.log('✅ Usuário criado na tabela admin_users:', {
+        id: adminUserData.id,
+        email: adminUserData.email,
+        full_name: adminUserData.full_name,
+        role: adminUserData.role,
+        status: adminUserData.status
+      });
     }
-
-    console.log('Usuário admin@ubanews.com criado com sucesso!');
-
+    
+    console.log('\n🎉 Usuário administrativo configurado com sucesso!');
+    console.log('📧 Email:', adminEmail);
+    console.log('🔑 Senha:', adminPassword);
+    console.log('🌐 URL de login: http://localhost:5173/admin/login');
+    
   } catch (error) {
-    console.error('Erro geral:', error.message);
+    console.error('❌ Erro ao criar usuário administrativo:', error);
+    process.exit(1);
   }
 }
 
+// Executar a função
 createAdminUser();

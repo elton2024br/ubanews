@@ -17,27 +17,120 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<{
+    email?: string;
+    password?: string;
+    otp?: string;
+  }>({});
 
   // Redirect if already authenticated
   if (user && !loading) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
+  // Função para validar email
+  const validateEmail = (email: string): string | undefined => {
+    if (!email.trim()) {
+      return 'Email é obrigatório';
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return 'Email deve ter um formato válido';
+    }
+    if (email.length > 254) {
+      return 'Email muito longo';
+    }
+    return undefined;
+  };
+
+  // Função para validar senha
+  const validatePassword = (password: string): string | undefined => {
+    if (!password.trim()) {
+      return 'Senha é obrigatória';
+    }
+    if (password.length < 6) {
+      return 'Senha deve ter pelo menos 6 caracteres';
+    }
+    if (password.length > 128) {
+      return 'Senha muito longa';
+    }
+    return undefined;
+  };
+
+  // Função para validar código 2FA
+  const validateOTP = (otp: string): string | undefined => {
+    if (otp && !/^\d{6}$/.test(otp)) {
+      return 'Código 2FA deve conter exatamente 6 dígitos';
+    }
+    return undefined;
+  };
+
+  // Função para validar todos os campos
+  const validateForm = (): boolean => {
+    console.log('[LoginPage] Iniciando validação do formulário');
+    
+    const errors = {
+      email: validateEmail(email),
+      password: validatePassword(password),
+      otp: validateOTP(otp)
+    };
+    
+    setValidationErrors(errors);
+    
+    const hasErrors = Object.values(errors).some(error => error !== undefined);
+    
+    if (hasErrors) {
+      console.log('[LoginPage] Erros de validação encontrados:', errors);
+      toast.error('Por favor, corrija os erros no formulário');
+    } else {
+      console.log('[LoginPage] Formulário válido');
+    }
+    
+    return !hasErrors;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('[LoginPage] Iniciando processo de login:', {
+      email: email.substring(0, 3) + '***',
+      hasPassword: !!password,
+      hasOTP: !!otp
+    });
+    
     setError('');
+    setValidationErrors({});
+    
+    // Validar formulário antes de enviar
+    if (!validateForm()) {
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
-      const result = await login(email, password, otp);
+      console.log('[LoginPage] Chamando função de login...');
+      const result = await login(email.trim(), password, otp.trim() || undefined);
+      
       if (result.success) {
+        console.log('[LoginPage] Login bem-sucedido');
         toast.success('Login realizado com sucesso!');
       } else {
+        console.error('[LoginPage] Falha no login:', result.error);
         setError(result.error || 'Erro ao fazer login');
         toast.error('Falha no login');
       }
-    } catch (err: any) {
-      setError('Erro interno do servidor');
+    } catch (err: unknown) {
+      console.error('[LoginPage] Erro crítico durante login:', err);
+      
+      let errorMessage = 'Erro interno do servidor';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
       toast.error('Falha no login');
     } finally {
       setIsSubmitting(false);
@@ -91,10 +184,20 @@ const LoginPage: React.FC = () => {
                     type="email"
                     placeholder="seu@email.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      // Limpar erro de validação quando o usuário começar a digitar
+                      if (validationErrors.email) {
+                        setValidationErrors(prev => ({ ...prev, email: undefined }));
+                      }
+                    }}
+                    className={validationErrors.email ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                     disabled={isSubmitting}
                   />
+                  {validationErrors.email && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -105,7 +208,14 @@ const LoginPage: React.FC = () => {
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Sua senha"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        // Limpar erro de validação quando o usuário começar a digitar
+                        if (validationErrors.password) {
+                          setValidationErrors(prev => ({ ...prev, password: undefined }));
+                        }
+                      }}
+                      className={validationErrors.password ? 'border-red-500 focus:ring-red-500' : ''}
                       required
                       disabled={isSubmitting}
                     />
@@ -124,18 +234,34 @@ const LoginPage: React.FC = () => {
                       )}
                     </Button>
                   </div>
+                  {validationErrors.password && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="otp">Código 2FA</Label>
+                  <Label htmlFor="otp">Código 2FA (opcional)</Label>
                   <Input
                     id="otp"
                     type="text"
-                    placeholder="000000"
+                    placeholder="Digite o código de 6 dígitos"
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
+                    onChange={(e) => {
+                      // Permitir apenas números
+                      const value = e.target.value.replace(/\D/g, '');
+                      setOtp(value);
+                      // Limpar erro de validação quando o usuário começar a digitar
+                      if (validationErrors.otp) {
+                        setValidationErrors(prev => ({ ...prev, otp: undefined }));
+                      }
+                    }}
+                    className={validationErrors.otp ? 'border-red-500 focus:ring-red-500' : ''}
+                    maxLength={6}
                     disabled={isSubmitting}
                   />
+                  {validationErrors.otp && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.otp}</p>
+                  )}
                 </div>
 
                 <Button

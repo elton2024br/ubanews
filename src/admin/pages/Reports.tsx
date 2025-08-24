@@ -44,6 +44,39 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
+interface StatusData {
+  status: string;
+  count: number;
+}
+
+interface CategoryData {
+  category: string;
+  count: number;
+}
+
+interface MonthData {
+  month: string;
+  count: number;
+}
+
+interface AuthorData {
+  author: string;
+  count: number;
+}
+
+interface ApprovalData {
+  status: string;
+  count: number;
+}
+
+interface AuditData {
+  id: string;
+  action: string;
+  details: string;
+  created_at: string;
+  user_id: string;
+}
+
 interface ReportData {
   totalNews: number;
   publishedNews: number;
@@ -150,12 +183,12 @@ export const Reports: React.FC = () => {
   };
 
   const processReportData = (
-    statusData: any[],
-    categoryData: any[],
-    monthData: any[],
-    authorData: any[],
-    approvalData: any[],
-    audits: any[]
+    statusData: StatusData[],
+    categoryData: CategoryData[],
+    monthData: MonthData[],
+    authorData: AuthorData[],
+    approvalData: ApprovalData[],
+    audits: AuditData[]
   ): ReportData => {
     const totalNews = statusData.reduce((sum, s) => sum + s.count, 0);
     const publishedNews = statusData.find(s => s.status === 'published')?.count || 0;
@@ -173,7 +206,7 @@ export const Reports: React.FC = () => {
     }));
     const approvalStats = approvalData;
     const topAuthors = authorData
-      .sort((a: any, b: any) => b.count - a.count)
+      .sort((a: AuthorData, b: AuthorData) => b.count - a.count)
       .slice(0, 10);
 
     const recentActivity = audits.map(audit => ({

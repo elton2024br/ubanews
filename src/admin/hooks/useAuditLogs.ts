@@ -18,7 +18,7 @@ const fetchAuditLogs = async (): Promise<AuditLog[]> => {
   // This is a simplification. A real implementation might need a JOIN.
   // For now, we assume the table is denormalized or we have the data.
   // Also, the type in `admin.ts` might need to be adjusted to match the db.
-  return (data as any[]) || [];
+  return (data as AuditLog[]) || [];
 };
 
 export const useAuditLogs = () => {

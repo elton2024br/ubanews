@@ -1,11 +1,23 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createMockSupabaseClient } from '../utils';
+import { NewsArticle } from '@/shared/types/news';
 
 vi.mock('@/lib/supabaseClient');
 import newsService from '@/services/newsService';
 
+interface CacheEntry {
+  data: NewsArticle[];
+  timestamp: number;
+  ttl: number;
+}
+
+interface NewsServiceWithCache {
+  MAX_CACHE_SIZE: number;
+  cache: Map<string, CacheEntry>;
+}
+
 describe('NewsService LRU cache', () => {
-  const service: any = newsService;
+  const service = newsService as unknown as NewsServiceWithCache;
   const originalMax = service.MAX_CACHE_SIZE;
 
   beforeEach(() => {

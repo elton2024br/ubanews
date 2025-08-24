@@ -7,7 +7,7 @@ type SettingsUpdatePayload = Partial<Omit<Settings, 'id' | 'updated_at'>>;
 
 async function updateSettings(payload: SettingsUpdatePayload) {
   const { error } = await supabase.rpc('update_settings_rpc', {
-    payload: payload as any, // Supabase RPC types can be tricky, casting to any for simplicity
+    payload: payload as Record<string, unknown>, // Use Record type instead of any
   });
 
   if (error) {

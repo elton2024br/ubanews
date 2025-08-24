@@ -103,6 +103,13 @@ const NewsManagement: React.FC = () => {
 
   const fetchNews = async () => {
     try {
+      console.log('[NewsManagement] Iniciando busca de notícias:', {
+        page: pagination.page,
+        limit: pagination.limit,
+        filters,
+        user_id: user?.id
+      });
+      
       setLoading(true);
       let query = supabase
         .from('admin_news')
@@ -110,26 +117,56 @@ const NewsManagement: React.FC = () => {
 
       // Apply filters
       if (filters.status !== 'all') {
+        console.log('[NewsManagement] Aplicando filtro de status:', filters.status);
         query = query.eq('status', filters.status);
       }
       if (filters.category !== 'all') {
+        console.log('[NewsManagement] Aplicando filtro de categoria:', filters.category);
         query = query.eq('category', filters.category);
       }
       if (filters.author !== 'all') {
+        console.log('[NewsManagement] Aplicando filtro de autor:', filters.author);
         query = query.eq('author_id', filters.author);
       }
       if (filters.search) {
+        console.log('[NewsManagement] Aplicando filtro de busca:', filters.search);
         query = query.or(`title.ilike.%${filters.search}%,content.ilike.%${filters.search}%`);
       }
 
       // Apply pagination
       const from = (pagination.page - 1) * pagination.limit;
       const to = from + pagination.limit - 1;
+      console.log('[NewsManagement] Aplicando paginação:', { from, to, page: pagination.page, limit: pagination.limit });
       query = query.range(from, to).order('created_at', { ascending: false });
 
       const { data, error, count } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('[NewsManagement] Erro do Supabase ao buscar notícias:', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          filters,
+          pagination: { from, to }
+        });
+        
+        let errorMessage = 'Erro ao carregar notícias';
+        if (error.code === 'PGRST116') {
+          errorMessage = 'Sem permissão para acessar as notícias';
+        } else if (error.message.includes('admin_users')) {
+          errorMessage = 'Erro ao carregar dados do autor das notícias';
+        }
+        
+        toast.error(errorMessage);
+        return;
+      }
+      
+      console.log('[NewsManagement] Notícias carregadas com sucesso:', {
+        count: data?.length || 0,
+        totalCount: count,
+        hasAuthors: data?.some(news => news.author) || false
+      });
 
       setNews(data || []);
       setPagination(prev => ({
@@ -138,8 +175,16 @@ const NewsManagement: React.FC = () => {
         totalPages: Math.ceil((count || 0) / prev.limit)
       }));
     } catch (error) {
-      console.error('Erro ao carregar notícias:', error);
-      toast.error('Erro ao carregar notícias');
+      console.error('[NewsManagement] Erro crítico ao buscar notícias:', error);
+      
+      let errorMessage = 'Erro interno ao carregar notícias';
+      if (error && typeof error === 'object') {
+        if ('message' in error) {
+          errorMessage = (error as { message: string }).message;
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -151,79 +196,316 @@ const NewsManagement: React.FC = () => {
 
   const handleCreateNews = async (data: NewsFormData) => {
     try {
+      console.log('[NewsManagement] Iniciando criação de notícia:', {
+        title: data.title,
+        category: data.category,
+        status: data.status,
+        user_id: user?.id
+      });
+      
+      // Validação crítica do author_id
+      if (!user?.id) {
+        console.error('[NewsManagement] Erro: usuário não autenticado ou ID ausente');
+        toast.error('Erro: usuário não autenticado. Faça login novamente.');
+        return;
+      }
+      
+      // Validação adicional dos dados obrigatórios
+      if (!data.title?.trim()) {
+        console.error('[NewsManagement] Erro: título é obrigatório');
+        toast.error('Título é obrigatório');
+        return;
+      }
+      
+      if (!data.content?.trim()) {
+        console.error('[NewsManagement] Erro: conteúdo é obrigatório');
+        toast.error('Conteúdo é obrigatório');
+        return;
+      }
+      
+      if (!data.category?.trim()) {
+        console.error('[NewsManagement] Erro: categoria é obrigatória');
+        toast.error('Categoria é obrigatória');
+        return;
+      }
+      
       const newsData = {
         ...data,
-        author_id: user?.id,
-        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()) : [],
+        author_id: user.id, // Garantir que não é undefined
+        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [],
         publish_date: data.publish_date || null,
-        views: 0
+        views: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
+      
+      console.log('[NewsManagement] Dados da notícia preparados:', {
+        author_id: newsData.author_id,
+        title: newsData.title,
+        category: newsData.category,
+        tags_count: newsData.tags.length
+      });
 
-      const { error } = await supabase
+      const { data: insertedData, error } = await supabase
         .from('admin_news')
-        .insert([newsData]);
+        .insert([newsData])
+        .select();
 
-      if (error) throw error;
-
+      if (error) {
+        console.error('[NewsManagement] Erro do Supabase ao criar notícia:', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        
+        let errorMessage = 'Erro ao criar notícia';
+        if (error.code === '23505') {
+          errorMessage = 'Já existe uma notícia com este título';
+        } else if (error.code === '23503') {
+          errorMessage = 'Erro de referência: verifique os dados informados';
+        } else if (error.message.includes('author_id')) {
+          errorMessage = 'Erro de autenticação: faça login novamente';
+        }
+        
+        toast.error(errorMessage);
+        return;
+      }
+      
+      console.log('[NewsManagement] Notícia criada com sucesso:', insertedData?.[0]?.id);
       toast.success('Notícia criada com sucesso!');
       setIsCreateDialogOpen(false);
       form.reset();
       fetchNews();
     } catch (error) {
-      console.error('Erro ao criar notícia:', error);
-      toast.error('Erro ao criar notícia');
+      console.error('[NewsManagement] Erro crítico ao criar notícia:', error);
+      
+      let errorMessage = 'Erro interno ao criar notícia';
+      if (error && typeof error === 'object') {
+        if ('message' in error) {
+          errorMessage = (error as { message: string }).message;
+        }
+      }
+      
+      toast.error(errorMessage);
     }
   };
 
   const handleUpdateNews = async (data: NewsFormData) => {
-    if (!selectedNews) return;
+    if (!selectedNews) {
+      console.error('[NewsManagement] Erro: nenhuma notícia selecionada para edição');
+      toast.error('Erro: nenhuma notícia selecionada para edição');
+      return;
+    }
 
     try {
+      console.log('[NewsManagement] Iniciando atualização de notícia:', {
+        id: selectedNews.id,
+        title: data.title,
+        category: data.category,
+        status: data.status,
+        user_id: user?.id
+      });
+      
+      // Validação do usuário autenticado
+      if (!user?.id) {
+        console.error('[NewsManagement] Erro: usuário não autenticado para atualização');
+        toast.error('Erro: usuário não autenticado. Faça login novamente.');
+        return;
+      }
+      
+      // Validação dos dados obrigatórios
+      if (!data.title?.trim()) {
+        console.error('[NewsManagement] Erro: título é obrigatório para atualização');
+        toast.error('Título é obrigatório');
+        return;
+      }
+      
+      if (!data.content?.trim()) {
+        console.error('[NewsManagement] Erro: conteúdo é obrigatório para atualização');
+        toast.error('Conteúdo é obrigatório');
+        return;
+      }
+      
+      if (!data.category?.trim()) {
+        console.error('[NewsManagement] Erro: categoria é obrigatória para atualização');
+        toast.error('Categoria é obrigatória');
+        return;
+      }
+      
       const newsData = {
         ...data,
-        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()) : [],
+        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [],
         publish_date: data.publish_date || null,
         updated_at: new Date().toISOString()
       };
+      
+      console.log('[NewsManagement] Dados da notícia preparados para atualização:', {
+        id: selectedNews.id,
+        title: newsData.title,
+        category: newsData.category,
+        tags_count: newsData.tags.length
+      });
 
-      const { error } = await supabase
+      const { data: updatedData, error } = await supabase
         .from('admin_news')
         .update(newsData)
-        .eq('id', selectedNews.id);
+        .eq('id', selectedNews.id)
+        .select();
 
-      if (error) throw error;
-
+      if (error) {
+        console.error('[NewsManagement] Erro do Supabase ao atualizar notícia:', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          news_id: selectedNews.id
+        });
+        
+        let errorMessage = 'Erro ao atualizar notícia';
+        if (error.code === '23505') {
+          errorMessage = 'Já existe uma notícia com este título';
+        } else if (error.code === '23503') {
+          errorMessage = 'Erro de referência: verifique os dados informados';
+        } else if (error.code === 'PGRST116') {
+          errorMessage = 'Notícia não encontrada ou sem permissão para editar';
+        }
+        
+        toast.error(errorMessage);
+        return;
+      }
+      
+      if (!updatedData || updatedData.length === 0) {
+        console.warn('[NewsManagement] Aviso: nenhuma linha foi atualizada');
+        toast.error('Notícia não encontrada ou não foi possível atualizar');
+        return;
+      }
+      
+      console.log('[NewsManagement] Notícia atualizada com sucesso:', updatedData[0]?.id);
       toast.success('Notícia atualizada com sucesso!');
       setIsEditDialogOpen(false);
       setSelectedNews(null);
       form.reset();
       fetchNews();
     } catch (error) {
-      console.error('Erro ao atualizar notícia:', error);
-      toast.error('Erro ao atualizar notícia');
+      console.error('[NewsManagement] Erro crítico ao atualizar notícia:', error);
+      
+      let errorMessage = 'Erro interno ao atualizar notícia';
+      if (error && typeof error === 'object') {
+        if ('message' in error) {
+          errorMessage = (error as { message: string }).message;
+        }
+      }
+      
+      toast.error(errorMessage);
     }
   };
 
-  const handleDeleteNews = async (newsId: string) => {
+  const handleDeleteNews = async (id: string) => {
     try {
-      const { error } = await supabase
+      console.log('[NewsManagement] Iniciando exclusão de notícia:', {
+        id,
+        user_id: user?.id
+      });
+      
+      // Validação do usuário autenticado
+      if (!user?.id) {
+        console.error('[NewsManagement] Erro: usuário não autenticado para exclusão');
+        toast.error('Erro: usuário não autenticado. Faça login novamente.');
+        return;
+      }
+      
+      // Validação do ID da notícia
+      if (!id?.trim()) {
+        console.error('[NewsManagement] Erro: ID da notícia é obrigatório para exclusão');
+        toast.error('Erro: ID da notícia inválido');
+        return;
+      }
+
+      const { data: deletedData, error } = await supabase
         .from('admin_news')
         .delete()
-        .eq('id', newsId);
+        .eq('id', id)
+        .select();
 
-      if (error) throw error;
-
+      if (error) {
+        console.error('[NewsManagement] Erro do Supabase ao excluir notícia:', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          news_id: id
+        });
+        
+        let errorMessage = 'Erro ao excluir notícia';
+        if (error.code === 'PGRST116') {
+          errorMessage = 'Notícia não encontrada ou sem permissão para excluir';
+        } else if (error.code === '23503') {
+          errorMessage = 'Não é possível excluir: notícia possui dependências';
+        }
+        
+        toast.error(errorMessage);
+        return;
+      }
+      
+      if (!deletedData || deletedData.length === 0) {
+        console.warn('[NewsManagement] Aviso: nenhuma linha foi excluída');
+        toast.error('Notícia não encontrada ou não foi possível excluir');
+        return;
+      }
+      
+      console.log('[NewsManagement] Notícia excluída com sucesso:', id);
       toast.success('Notícia excluída com sucesso!');
       fetchNews();
     } catch (error) {
-      console.error('Erro ao excluir notícia:', error);
-      toast.error('Erro ao excluir notícia');
+      console.error('[NewsManagement] Erro crítico ao excluir notícia:', error);
+      
+      let errorMessage = 'Erro interno ao excluir notícia';
+      if (error && typeof error === 'object') {
+        if ('message' in error) {
+          errorMessage = (error as { message: string }).message;
+        }
+      }
+      
+      toast.error(errorMessage);
     }
   };
 
   const handleStatusChange = async (newsId: string, newStatus: string) => {
     try {
-      const updateData: any = {
+      console.log('[NewsManagement] Iniciando alteração de status:', {
+        id: newsId,
+        newStatus,
+        user_id: user?.id
+      });
+      
+      // Validação do usuário autenticado
+      if (!user?.id) {
+        console.error('[NewsManagement] Erro: usuário não autenticado para alteração de status');
+        toast.error('Erro: usuário não autenticado. Faça login novamente.');
+        return;
+      }
+      
+      // Validação do ID da notícia
+      if (!newsId?.trim()) {
+        console.error('[NewsManagement] Erro: ID da notícia é obrigatório para alteração de status');
+        toast.error('Erro: ID da notícia inválido');
+        return;
+      }
+      
+      // Validação do novo status
+      const validStatuses = ['draft', 'published', 'archived', 'pending'];
+      if (!validStatuses.includes(newStatus)) {
+        console.error('[NewsManagement] Erro: status inválido:', newStatus);
+        toast.error('Erro: status inválido');
+        return;
+      }
+
+      const updateData: {
+        status: string;
+        updated_at: string;
+        publish_date?: string;
+      } = {
         status: newStatus,
         updated_at: new Date().toISOString()
       };
@@ -232,18 +514,57 @@ const NewsManagement: React.FC = () => {
         updateData.publish_date = new Date().toISOString();
       }
 
-      const { error } = await supabase
+      const { data: updatedData, error } = await supabase
         .from('admin_news')
         .update(updateData)
-        .eq('id', newsId);
+        .eq('id', newsId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[NewsManagement] Erro do Supabase ao alterar status:', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          news_id: newsId,
+          attempted_status: newStatus
+        });
+        
+        let errorMessage = 'Erro ao alterar status da notícia';
+        if (error.code === 'PGRST116') {
+          errorMessage = 'Notícia não encontrada ou sem permissão para alterar';
+        } else if (error.code === '23503') {
+          errorMessage = 'Erro de referência: verifique os dados';
+        }
+        
+        toast.error(errorMessage);
+        return;
+      }
+      
+      if (!updatedData || updatedData.length === 0) {
+        console.warn('[NewsManagement] Aviso: nenhuma linha foi atualizada para alteração de status');
+        toast.error('Notícia não encontrada ou não foi possível alterar o status');
+        return;
+      }
+      
+      console.log('[NewsManagement] Status alterado com sucesso:', {
+        id: newsId,
+        newStatus
+      });
 
       toast.success(`Notícia ${newStatus === 'published' ? 'publicada' : newStatus === 'archived' ? 'arquivada' : 'atualizada'} com sucesso!`);
       fetchNews();
     } catch (error) {
-      console.error('Erro ao alterar status:', error);
-      toast.error('Erro ao alterar status da notícia');
+      console.error('[NewsManagement] Erro crítico ao alterar status:', error);
+      
+      let errorMessage = 'Erro interno ao alterar status da notícia';
+      if (error && typeof error === 'object') {
+        if ('message' in error) {
+          errorMessage = (error as { message: string }).message;
+        }
+      }
+      
+      toast.error(errorMessage);
     }
   };
 

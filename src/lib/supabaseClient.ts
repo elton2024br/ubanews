@@ -5,15 +5,76 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 let supabase: SupabaseClient<Database>;
 
+// Função para criar cliente com configurações robustas
+const createSupabaseClient = (url: string, key: string) => {
+  return createClient(url, key, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      // Configurações para melhor tratamento de erros de rede
+      flowType: 'pkce',
+      debug: import.meta.env.VITE_DEBUG_MODE === 'true'
+    },
+    global: {
+      // Configurações de fetch com retry e timeout
+      fetch: async (url, options = {}) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+        
+        const fetchWithRetry = async (retries = 3): Promise<Response> => {
+          try {
+            const response = await fetch(url, {
+              ...options,
+              signal: controller.signal,
+              headers: {
+                ...options.headers,
+                'Cache-Control': 'no-cache',
+              },
+            });
+            
+            clearTimeout(timeoutId);
+            
+            // Se a resposta não for ok e ainda temos tentativas, retry
+            if (!response.ok && retries > 0) {
+              console.warn(`[Supabase] Request failed, retrying... (${retries} attempts left)`);
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+              return fetchWithRetry(retries - 1);
+            }
+            
+            return response;
+          } catch (error) {
+            clearTimeout(timeoutId);
+            
+            // Se é erro de rede e ainda temos tentativas, retry
+            if (retries > 0 && (error instanceof TypeError || error.name === 'AbortError')) {
+              console.warn(`[Supabase] Network error, retrying... (${retries} attempts left):`, error.message);
+              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+              return fetchWithRetry(retries - 1);
+            }
+            
+            throw error;
+          }
+        };
+        
+        return fetchWithRetry();
+      }
+    }
+  });
+};
+
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Missing Supabase environment variables; using mock client');
   supabase = createClient('https://localhost', 'anon-key');
 } else {
-  supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true
+  supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+  
+  // Adicionar listener para erros de autenticação
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'TOKEN_REFRESHED') {
+      console.log('[Supabase] Token refreshed successfully');
+    } else if (event === 'SIGNED_OUT') {
+      console.log('[Supabase] User signed out');
     }
   });
 }
@@ -157,7 +218,7 @@ export type Database = {
           action: string;
           resource: string;
           resource_id: string;
-          details: Record<string, any>;
+          details: Record<string, unknown>;
           ip_address: string;
           user_agent: string;
           created_at: string;
@@ -168,7 +229,7 @@ export type Database = {
           action: string;
           resource: string;
           resource_id: string;
-          details: Record<string, any>;
+          details: Record<string, unknown>;
           ip_address: string;
           user_agent: string;
           created_at?: string;
@@ -179,7 +240,7 @@ export type Database = {
           action?: string;
           resource?: string;
           resource_id?: string;
-          details?: Record<string, any>;
+          details?: Record<string, unknown>;
           ip_address?: string;
           user_agent?: string;
           created_at?: string;

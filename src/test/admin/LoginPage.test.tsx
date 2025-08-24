@@ -16,8 +16,8 @@ vi.mock('sonner', () => ({
 describe('LoginPage', () => {
   beforeEach(() => {
     mockLogin.mockReset();
-    (toast.success as any).mockClear();
-    (toast.error as any).mockClear();
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
   });
 
   it('realiza login com sucesso', async () => {

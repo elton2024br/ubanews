@@ -126,17 +126,17 @@ export const mockFeatureFlags = () => {
     setFlag: vi.fn((key: string, value: boolean) => {
       flags[key as keyof typeof flags] = value;
       const flagListeners = listeners.get(key) || new Set();
-      flagListeners.forEach((callback: any) => callback(value));
+      flagListeners.forEach((callback: (value: boolean) => void) => callback(value));
     }),
     toggleFlag: vi.fn((key: string) => {
       const newValue = !flags[key as keyof typeof flags];
       flags[key as keyof typeof flags] = newValue;
       const flagListeners = listeners.get(key) || new Set();
-      flagListeners.forEach((callback: any) => callback(newValue));
+      flagListeners.forEach((callback: (value: boolean) => void) => callback(newValue));
       return newValue;
     }),
     getAllFlags: vi.fn(() => ({ ...flags })),
-    addListener: vi.fn((key: string, callback: any) => {
+    addListener: vi.fn((key: string, callback: (value: boolean) => void) => {
       if (!listeners.has(key)) {
         listeners.set(key, new Set());
       }

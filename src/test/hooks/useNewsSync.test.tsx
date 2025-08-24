@@ -40,10 +40,42 @@ vi.mock('@/services/newsService', () => ({
   },
 }));
 
+import { NewsArticle } from '@/shared/types/news';
+
+interface RealtimePayload {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new?: NewsArticle | null;
+  old?: NewsArticle | null;
+  schema: string;
+  table: string;
+}
+
+interface MockCallback {
+  event: string;
+  config: {
+    event: string;
+    schema: string;
+    table: string;
+  };
+  callback: (payload: RealtimePayload) => void;
+}
+
+interface MockSubscription {
+  subscribe: (callback?: (status: string, error?: Error) => void) => MockSubscription;
+  unsubscribe: () => void;
+}
+
+interface MockChannel {
+  on: (event: string, config: { event: string; schema: string; table: string }, callback: (payload: RealtimePayload) => void) => MockChannel;
+  subscribe: (callback?: (status: string, error?: Error) => void) => MockSubscription;
+  unsubscribe: () => void;
+  _callback?: (payload: RealtimePayload) => void;
+}
+
 describe('useNewsSync', () => {
-  let mockChannel: any;
-  let mockSubscription: any;
-  let mockCallbacks: any[] = [];
+  let mockChannel: MockChannel;
+  let mockSubscription: MockSubscription;
+  let mockCallbacks: MockCallback[] = [];
 
   beforeEach(() => {
     vi.clearAllMocks();

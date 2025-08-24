@@ -1,0 +1,157 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "React",
+    "Vite",
+    "Tailwind CSS",
+    "shadcn/ui",
+    "Radix UI",
+    "React Router",
+    "React Query",
+    "Supabase",
+    "Vitest",
+    "Storybook",
+    "Recharts"
+  ],
+  "features": [
+    {
+      "name": "Componentes de UI",
+      "description": "Componentes de interface de usuário baseados em shadcn/ui e Radix UI",
+      "files": [
+        "src/components/ui/toaster.tsx",
+        "src/components/ui/toast.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/command.tsx",
+        "src/components/ui/alert-dialog.tsx"
+      ]
+    },
+    {
+      "name": "Componentes de Layout",
+      "description": "Componentes estruturais para layout da aplicação",
+      "files": [
+        "src/components/Header.tsx",
+        "src/components/Footer.tsx",
+        "src/components/MobileHeader.tsx",
+        "src/components/OffCanvasMenu.tsx",
+        "src/components/HeroBanner.tsx",
+        "src/admin/layout/AdminLayout.tsx"
+      ]
+    },
+    {
+      "name": "Componentes de Notícias",
+      "description": "Componentes para exibição e gerenciamento de notícias",
+      "files": [
+        "src/components/NewsCard.tsx",
+        "src/components/MobileNewsCard.tsx",
+        "src/components/NewsDetail.tsx",
+        "src/components/MobileNewsFeed.tsx",
+        "src/components/MostReadSection.tsx",
+        "src/components/RadarSection.tsx"
+      ]
+    },
+    {
+      "name": "Hooks Personalizados",
+      "description": "Hooks React para gerenciamento de estado e lógica reutilizável",
+      "files": [
+        "src/hooks/usePublicNews.ts",
+        "src/hooks/useFeatureFlags.ts",
+        "src/hooks/useNewsCache.ts",
+        "src/hooks/useNewsSync.ts",
+        "src/hooks/useServiceWorker.ts",
+        "src/hooks/use-toast.ts",
+        "src/hooks/use-infinite-scroll.tsx",
+        "src/hooks/use-mobile.tsx",
+        "src/hooks/useResourcePreload.ts",
+        "src/hooks/useAdvancedSearch.ts"
+      ]
+    },
+    {
+      "name": "Serviços de API",
+      "description": "Serviços para comunicação com backend e gerenciamento de dados",
+      "files": [
+        "src/services/newsApi.ts",
+        "src/services/newsService.ts",
+        "src/lib/supabaseClient.ts"
+      ]
+    },
+    {
+      "name": "Páginas Públicas",
+      "description": "Páginas acessíveis aos usuários finais",
+      "files": [
+        "src/pages/Index.tsx",
+        "src/pages/NewsPage.tsx",
+        "src/pages/SearchResults.tsx",
+        "src/pages/Categories.tsx",
+        "src/pages/About.tsx",
+        "src/pages/Contact.tsx",
+        "src/pages/PrivacyPolicy.tsx",
+        "src/pages/TermsOfUse.tsx",
+        "src/pages/NotFound.tsx"
+      ]
+    },
+    {
+      "name": "Sistema de Administração",
+      "description": "Módulo de administração para gerenciamento de conteúdo",
+      "files": [
+        "src/admin/pages/Dashboard.tsx",
+        "src/admin/pages/NewsList.tsx",
+        "src/admin/pages/NewsForm.tsx",
+        "src/admin/pages/Approvals.tsx",
+        "src/admin/pages/Reports.tsx",
+        "src/admin/pages/Users.tsx",
+        "src/admin/pages/AuditLogs.tsx",
+        "src/admin/pages/Settings.tsx",
+        "src/admin/auth/LoginPage.tsx",
+        "src/admin/auth/ProtectedRoute.tsx"
+      ]
+    },
+    {
+      "name": "Gerenciamento de Estado",
+      "description": "Contextos e provedores para gerenciamento de estado global",
+      "files": [
+        "src/admin/context/AdminProvider.tsx",
+        "src/components/ThemeProvider.tsx"
+      ]
+    },
+    {
+      "name": "Utilitários",
+      "description": "Funções utilitárias e helpers",
+      "files": [
+        "src/lib/utils.ts",
+        "src/lib/featureFlags.ts",
+        "src/utils/accessibility.ts",
+        "src/utils/dateUtils.ts"
+      ]
+    },
+    {
+      "name": "Otimização de Performance",
+      "description": "Recursos para otimização de performance e experiência do usuário",
+      "files": [
+        "src/components/LazyComponents.tsx",
+        "src/components/OptimizedImage.tsx",
+        "src/components/SkeletonLoader.tsx",
+        "src/components/SkeletonCard.tsx",
+        "src/components/ServiceWorkerUpdate.tsx"
+      ]
+    },
+    {
+      "name": "Acessibilidade",
+      "description": "Componentes e recursos para melhorar a acessibilidade",
+      "files": [
+        "src/components/SkipLinks.tsx",
+        "src/components/ErrorBoundary.tsx",
+        "src/utils/accessibility.ts"
+      ]
+    },
+    {
+      "name": "Animações e Transições",
+      "description": "Componentes para animações e transições na interface",
+      "files": [
+        "src/components/AnimatedTransitions.tsx",
+        "src/styles/animations.css"
+      ]
+    }
+  ]
+}

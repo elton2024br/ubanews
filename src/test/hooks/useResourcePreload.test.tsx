@@ -3,15 +3,15 @@ import { renderHook, act } from '@testing-library/react';
 import { useResourcePreload } from '@/hooks/useResourcePreload';
 
 const triggerLoad = (element: HTMLLinkElement) => {
-  setTimeout(() => element.onload && element.onload(new Event('load') as any));
+  setTimeout(() => element.onload && element.onload(new Event('load')));
 };
 
 describe('useResourcePreload', () => {
-  let appendSpy: any;
+  let appendSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     document.head.innerHTML = '';
-    appendSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((el: any) => {
+    appendSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((el: HTMLLinkElement) => {
       triggerLoad(el);
       return el;
     });

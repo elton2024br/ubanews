@@ -15,6 +15,8 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from '../../components/ui/sheet';
 import {
@@ -34,7 +36,10 @@ import {
   Clock,
   BarChart3,
   User,
-  Gauge
+  Gauge,
+  Home,
+  Plus,
+  PenTool
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -72,12 +77,6 @@ const navigation: NavigationItem[] = [
     name: 'Relatórios',
     href: '/admin/reports',
     icon: BarChart3,
-    allowedRoles: ['admin', 'editor'],
-  },
-  {
-    name: 'Performance',
-    href: '/admin/performance',
-    icon: Gauge,
     allowedRoles: ['admin', 'editor'],
   },
   {
@@ -149,6 +148,40 @@ export const AdminLayout: React.FC = () => {
         </Link>
       </div>
 
+      {/* Quick Actions */}
+      <div className="px-4 py-3 border-b bg-gray-50">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Ações Rápidas</p>
+        <div className="space-y-2">
+          {/* Voltar para página inicial */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              window.open('/', '_blank');
+              setSidebarOpen(false);
+            }}
+            className="w-full justify-start hover:bg-blue-50 hover:border-blue-300 transition-colors"
+          >
+            <Home className="mr-2 h-4 w-4" />
+            Página Inicial
+          </Button>
+
+          {/* Criar notícia */}
+          <Button 
+            variant="default" 
+            size="sm" 
+            onClick={() => {
+              navigate('/admin/news/new');
+              setSidebarOpen(false);
+            }}
+            className="w-full justify-start bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Criar Notícia
+          </Button>
+        </div>
+      </div>
+
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-4 py-4">
         {filteredNavigation.map((item) => {
@@ -211,6 +244,9 @@ export const AdminLayout: React.FC = () => {
       {/* Mobile Sidebar */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="left" className="p-0 w-64">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Menu de Administração</SheetTitle>
+          </SheetHeader>
           <SidebarContent />
         </SheetContent>
       </Sheet>
@@ -244,6 +280,34 @@ export const AdminLayout: React.FC = () => {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Navigation Actions */}
+              <div className="flex items-center space-x-2">
+                {/* Voltar para página inicial */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.open('/', '_blank')}
+                  className="hidden sm:flex items-center space-x-2 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                >
+                  <Home className="h-4 w-4" />
+                  <span className="hidden md:inline">Página Inicial</span>
+                </Button>
+
+                {/* Criar notícia */}
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={() => navigate('/admin/news/new')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden md:inline">Criar Notícia</span>
+                </Button>
+              </div>
+
+              {/* Divider */}
+              <div className="hidden sm:block h-6 w-px bg-gray-300" />
+
               {/* Search */}
               <Button variant="ghost" size="sm">
                 <Search className="h-5 w-5" />

@@ -64,52 +64,90 @@ export const Dashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     try {
-      // Load news statistics
-      const { data: newsData } = await supabase
+      console.log('[Dashboard] Iniciando carregamento de dados do dashboard...');
+      
+      // Carregar estatísticas de notícias
+      console.log('🔍 Carregando estatísticas de notícias...');
+      const { data: newsStats, error: newsError } = await supabase
         .from('admin_news')
-        .select('status, views, created_at');
+        .select('status, view_count')
+        .eq('author_id', user.id);
 
-      if (newsData) {
-        const totalNews = newsData.length;
-        const publishedNews = newsData.filter(n => n.status === 'published').length;
-        const pendingNews = newsData.filter(n => n.status === 'pending').length;
-        const draftNews = newsData.filter(n => n.status === 'draft').length;
-        const totalViews = newsData.reduce((sum, n) => sum + (n.views || 0), 0);
-        
-        // Calculate today's views (mock for now)
-        const todayViews = Math.floor(totalViews * 0.05);
-
-        setStats(prev => ({
-          ...prev,
-          totalNews,
-          publishedNews,
-          pendingNews,
-          draftNews,
-          totalViews,
-          todayViews
-        }));
+      if (newsError) {
+        console.error('❌ Erro ao carregar estatísticas de notícias:', newsError);
+        throw newsError;
       }
 
-      // Load recent news
-      const { data: recentNewsData } = await supabase
+      console.log('📊 Dados de estatísticas carregados:', newsStats);
+
+      const totalNews = newsStats?.length || 0;
+      const publishedNews = newsStats?.filter(n => n.status === 'published').length || 0;
+      const pendingNews = newsStats?.filter(n => n.status === 'pending').length || 0;
+      const draftNews = newsStats?.filter(n => n.status === 'draft').length || 0;
+      const totalViews = newsStats?.reduce((sum, n) => sum + (n.view_count || 0), 0) || 0;
+      const todayViews = Math.floor(totalViews * 0.1); // Simulado
+
+      console.log('📈 Estatísticas calculadas:', {
+        totalNews,
+        publishedNews,
+        pendingNews,
+        draftNews,
+        totalViews,
+        todayViews
+      });
+
+      setStats(prev => ({
+        ...prev,
+        totalNews,
+        publishedNews,
+        pendingNews,
+        draftNews,
+        totalViews,
+        todayViews
+      }));
+
+      // Carregar notícias recentes
+      console.log('📰 Carregando notícias recentes...');
+      const { data: recentNews, error: recentError } = await supabase
         .from('admin_news')
-        .select('id, title, status, author_name, created_at, published_at, views')
+        .select(`
+          id,
+          title,
+          status,
+          created_at,
+          view_count,
+          admin_users!author_id(
+            full_name
+          )
+        `)
+        .eq('author_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5);
 
-      if (recentNewsData) {
-        setRecentNews(recentNewsData);
+      if (recentError) {
+        console.error('❌ Erro ao carregar notícias recentes:', recentError);
+        throw recentError;
+      }
+
+      console.log('📝 Notícias recentes carregadas:', recentNews);
+
+      if (recentNews) {
+        setRecentNews(recentNews);
+      } else {
+        console.warn('⚠️ Nenhuma notícia recente encontrada');
       }
 
       // Load user statistics (mock for now)
+      console.log('[Dashboard] Definindo estatísticas de usuários (mock)...');
       setStats(prev => ({
         ...prev,
         totalUsers: 1420,
         activeUsers: 89
       }));
 
+      console.log('[Dashboard] Carregamento de dados concluído com sucesso!');
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      console.error('[Dashboard] Erro crítico ao carregar dados do dashboard:', error);
     } finally {
       setLoading(false);
     }

@@ -124,14 +124,7 @@ export interface FeedbackMessage {
   };
 }
 
-// Performance and Optimization Types
-export interface PerformanceMetrics {
-  renderTime: number;
-  loadTime: number;
-  interactionTime: number;
-  memoryUsage?: number;
-}
-
+// Optimization Types
 export interface OptimizationConfig {
   enableMemoization: boolean;
   enableVirtualization: boolean;

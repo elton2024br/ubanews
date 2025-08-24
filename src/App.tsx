@@ -17,10 +17,8 @@ import {
   TermsOfUseLazy,
   LoadingSpinner
 } from "./components/LazyComponents";
-import WebVitalsDashboard from "./components/WebVitalsDashboard";
 import ServiceWorkerManager from "./components/ServiceWorkerUpdate";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { initWebVitals, monitorResourceLoading } from "./utils/webVitals";
 import { useServiceWorker } from "./hooks/useServiceWorker";
 import { useResourcePreload } from "./hooks/useResourcePreload";
 
@@ -36,7 +34,7 @@ const NewsForm = lazy(() => import("./admin/pages/NewsForm"));
 const NewsPreview = lazy(() => import("./pages/NewsPreview"));
 const Approvals = lazy(() => import("./admin/pages/Approvals"));
 const Reports = lazy(() => import("./admin/pages/Reports"));
-const Performance = lazy(() => import("./admin/pages/Performance"));
+
 const Users = lazy(() => import("./admin/pages/Users"));
 const AuditLogs = lazy(() => import("./admin/pages/AuditLogs"));
 const Settings = lazy(() => import("./admin/pages/Settings"));
@@ -50,15 +48,9 @@ const App = () => {
   // Initialize resource preloading
   const { preloadCriticalResources, isLoading: preloadLoading } = useResourcePreload();
 
-  // Initialize Web Vitals monitoring and Resource Preloading on app start
+  // Initialize Resource Preloading on app start
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Initialize Web Vitals monitoring
-      initWebVitals();
-      
-      // Monitor resource loading performance
-      monitorResourceLoading();
-      
       // Service Worker registration is handled automatically by the hook
       // (disabled in development mode to prevent conflicts with HMR)
       
@@ -67,7 +59,7 @@ const App = () => {
       
       // Log initialization in development
       if (process.env.NODE_ENV === 'development') {
-        console.log('🚀 Ubatuba News - Web Vitals monitoring initialized');
+        console.log('🚀 Ubatuba News initialized');
         console.log('📦 Service Worker support:', isSupported);
         console.log('⚡ Resource preloading:', !preloadLoading ? 'active' : 'loading');
         if (error) {
@@ -140,7 +132,7 @@ const App = () => {
                                 <Route path="/news/edit/:id" element={<NewsForm />} />
                                 <Route path="/approvals" element={<Approvals />} />
                                 <Route path="/reports" element={<Reports />} />
-                                <Route path="/performance" element={<Performance />} />
+
                                 <Route path="/users" element={<Users />} />
                                 <Route path="/audit" element={<AuditLogs />} />
                                 <Route path="/settings" element={<Settings />} />
@@ -157,8 +149,7 @@ const App = () => {
                   <Route path="*" element={<NotFoundLazy />} />
                 </Routes>
               </ErrorBoundary>
-              {/* Web Vitals Dashboard - only visible in development or when debug=true */}
-              <WebVitalsDashboard />
+
               {/* Service Worker Manager - handles updates and network status */}
               <ServiceWorkerManager />
             </BrowserRouter>

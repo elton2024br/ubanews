@@ -132,5 +132,5 @@ if (!global.PointerEvent) {
       this.isPrimary = params.isPrimary
     }
   }
-  global.PointerEvent = PointerEvent as any
+  global.PointerEvent = PointerEvent as typeof PointerEvent
 }

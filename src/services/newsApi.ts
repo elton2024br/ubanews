@@ -13,7 +13,7 @@ export const fetchNewsByCategory = async (category: string): Promise<NewsArticle
     throw new Error(error.message);
   }
 
-  return toNewsArticleArray(data as any);
+  return toNewsArticleArray(data || []);
 };
 
 interface SearchParams {

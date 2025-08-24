@@ -17,11 +17,10 @@ const NewsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  if (!id) {
-    return <Navigate to="/" replace />;
-  }
-
   useEffect(() => {
+    if (!id) {
+      return;
+    }
     const loadArticle = async () => {
       const startTime = Date.now();
       setLoading(true);
@@ -72,6 +71,10 @@ const NewsPage: React.FC = () => {
     
     loadArticle();
   }, [id, useDynamic, recordLoadTime, recordError]);
+  
+  if (!id) {
+    return <Navigate to="/" replace />;
+  }
   
   // Loading state
   if (loading) {

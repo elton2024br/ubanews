@@ -24,12 +24,12 @@ ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow admin to read settings" ON public.settings;
 CREATE POLICY "Allow admin to read settings"
   ON public.settings FOR SELECT
-  USING (auth.uid() IN (SELECT id FROM public.users WHERE role = 'admin'));
+  USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role = 'admin'));
 
 DROP POLICY IF EXISTS "Allow admin to update settings" ON public.settings;
 CREATE POLICY "Allow admin to update settings"
   ON public.settings FOR UPDATE
-  USING (auth.uid() IN (SELECT id FROM public.users WHERE role = 'admin'));
+  USING (auth.uid() IN (SELECT id FROM public.admin_users WHERE role = 'admin'));
 
 -- Function to update settings
 CREATE OR REPLACE FUNCTION update_settings_rpc(payload jsonb)
@@ -41,7 +41,7 @@ DECLARE
   caller_role text;
 BEGIN
   -- Check if the caller is an admin
-  SELECT role INTO caller_role FROM public.users WHERE id = auth.uid();
+  SELECT role INTO caller_role FROM public.admin_users WHERE id = auth.uid();
 
   IF caller_role <> 'admin' THEN
     RAISE EXCEPTION 'Permission denied: You must be an admin to update settings.';

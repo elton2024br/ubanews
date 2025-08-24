@@ -1,8 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import newsService from '@/services/newsService';
 
+interface MockQueryBuilder {
+  select: ReturnType<typeof vi.fn>;
+  eq: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
+  or: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
+  range: ReturnType<typeof vi.fn>;
+  then: ReturnType<typeof vi.fn>;
+}
+
 // Create a reusable mock query builder with chainable methods
-const mockQueryBuilder: any = {
+const mockQueryBuilder: MockQueryBuilder = {
   select: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
   order: vi.fn().mockReturnThis(),
@@ -27,7 +37,7 @@ describe('NewsService pagination and search', () => {
 
   it('applies limit and offset for pagination', async () => {
     const resultData = Array.from({ length: 5 }, (_, i) => ({ id: String(i) }));
-    mockQueryBuilder.then.mockImplementation((resolve: any) =>
+    mockQueryBuilder.then.mockImplementation((resolve: (value: { data: unknown[]; error: null; count: number }) => void) =>
       resolve({ data: resultData, error: null, count: 12 })
     );
 
@@ -41,7 +51,7 @@ describe('NewsService pagination and search', () => {
   });
 
   it('filters news by search term', async () => {
-    mockQueryBuilder.then.mockImplementation((resolve: any) =>
+    mockQueryBuilder.then.mockImplementation((resolve: (value: { data: unknown[]; error: null; count: number }) => void) =>
       resolve({ data: [], error: null, count: 0 })
     );
 

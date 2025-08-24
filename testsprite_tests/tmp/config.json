@@ -1,0 +1,17 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173",
+  "loginUser": "eltonshldon2024@gmail.com",
+  "loginPassword": "No38495573@",
+  "executionArgs": {
+    "projectName": "ubanews",
+    "projectPath": "c:\\Users\\Elton\\OneDrive\\Documentos\\ubatuba\\teste\\ubanews",
+    "testIds": [],
+    "additionalInstruction": "Testar os componentes principais da UI, navegação entre páginas, responsividade e acessibilidade",
+    "envs": {
+      "API_KEY": ""
+    }
+  }
+}

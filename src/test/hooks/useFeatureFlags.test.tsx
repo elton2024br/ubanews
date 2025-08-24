@@ -27,18 +27,18 @@ vi.mock('@/lib/featureFlags', () => {
     setFlag: vi.fn((key: string, value: boolean) => {
       mockFlags[key as keyof typeof mockFlags] = value;
       const listeners = mockListeners.get(key) || new Set();
-      listeners.forEach((listener: any) => listener(value));
+      listeners.forEach((listener: (value: boolean) => void) => listener(value));
     }),
     toggleFlag: vi.fn((key: string) => {
       const currentValue = mockFlags[key as keyof typeof mockFlags];
       const newValue = !currentValue;
       mockFlags[key as keyof typeof mockFlags] = newValue;
       const listeners = mockListeners.get(key) || new Set();
-      listeners.forEach((listener: any) => listener(newValue));
+      listeners.forEach((listener: (value: boolean) => void) => listener(newValue));
       return newValue;
     }),
     getAllFlags: vi.fn(() => ({ ...mockFlags })),
-    addListener: vi.fn((key: string, callback: any) => {
+    addListener: vi.fn((key: string, callback: (value: boolean) => void) => {
       if (!mockListeners.has(key)) {
         mockListeners.set(key, new Set());
       }
@@ -116,7 +116,7 @@ describe('useIsFeatureEnabled', () => {
   it('should return false for undefined flags', () => {
     vi.mocked(featureFlags.getFlag).mockReturnValue(undefined);
     
-    const { result } = renderHook(() => useIsFeatureEnabled('NON_EXISTENT_FLAG' as any));
+    const { result } = renderHook(() => useIsFeatureEnabled('NON_EXISTENT_FLAG' as keyof FeatureFlags));
     
     expect(result.current).toBe(false);
   });

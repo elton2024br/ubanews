@@ -4,14 +4,11 @@ import HeroBanner from "@/components/HeroBanner";
 import { LoadingSpinner } from "@/components/LazyComponents";
 import Footer from "@/components/Footer";
 import { TrendingUp, Radar } from "lucide-react";
-import { usePagePerformance, useComponentPerformance } from "@/hooks/useWebVitals";
+
 
 const MobileNewsFeed = React.lazy(() => import("@/components/MobileNewsFeed"));
 
 const Index = () => {
-  // Monitor page performance
-  const pageMetrics = usePagePerformance('Home Page');
-  const { renderTime, markInteraction } = useComponentPerformance('Index');
 
   return (
     <div className="min-h-screen bg-background">

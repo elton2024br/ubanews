@@ -165,7 +165,7 @@ export const NewsList: React.FC = () => {
 
   const handleStatusChange = async (newsId: string, newStatus: string) => {
     try {
-      const updateData: any = { status: newStatus };
+      const updateData: { status: string; published_at?: string } = { status: newStatus };
       
       if (newStatus === 'published') {
         updateData.published_at = new Date().toISOString();
