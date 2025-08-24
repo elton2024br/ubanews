@@ -286,9 +286,11 @@ export const AdminLayout: React.FC = () => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Configurações
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/settings" className="flex items-center">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Configurações
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600">
