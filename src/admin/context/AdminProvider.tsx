@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import { totp } from 'otplib';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/use-toast';
@@ -104,10 +105,14 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     }
   };
 
-  const verifyTOTP = (secret: string, token: string): boolean => {
-    // Simplified TOTP verification for browser compatibility
-    // In production, consider using a proper TOTP library like otplib
-    return token.length === 6 && /^\d{6}$/.test(token);
+  export const verifyTOTP = (secret: string, token: string): boolean => {
+    try {
+      if (!secret) return false;
+      // Allow a one-step window to handle minor clock drift
+      return totp.verify({ token, secret, window: 1 });
+    } catch {
+      return false;
+    }
   };
 
   const loadAdminUser = async (email: string, attempt = 0): Promise<void> => {
@@ -186,12 +191,12 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       if (adminUser.two_factor_enabled) {
         if (!otp) {
           await supabase.auth.signOut();
-          return { success: false, error: 'Código de verificação necessário' };
+          return { success: false, error: 'Código 2FA necessário' };
         }
         const isValid = verifyTOTP(adminUser.two_factor_secret || '', otp);
         if (!isValid) {
           await supabase.auth.signOut();
-          return { success: false, error: 'Código de verificação inválido' };
+          return { success: false, error: 'Código 2FA inválido' };
         }
       }
 
