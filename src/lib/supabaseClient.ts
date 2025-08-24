@@ -185,6 +185,32 @@ export type Database = {
           created_at?: string;
         };
       };
+      site_settings: {
+        Row: {
+          id: string;
+          site_name: string;
+          logo_url: string | null;
+          feature_flags: Record<string, any>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          site_name: string;
+          logo_url?: string | null;
+          feature_flags?: Record<string, any>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          site_name?: string;
+          logo_url?: string | null;
+          feature_flags?: Record<string, any>;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       web_vitals: {
         Row: {
           id: string;

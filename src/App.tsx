@@ -36,6 +36,7 @@ const NewsForm = lazy(() => import("./admin/pages/NewsForm"));
 const Approvals = lazy(() => import("./admin/pages/Approvals"));
 const Reports = lazy(() => import("./admin/pages/Reports"));
 const Performance = lazy(() => import("./admin/pages/Performance"));
+const Settings = lazy(() => import("./admin/pages/Settings"));
 
 const queryClient = new QueryClient();
 
@@ -132,15 +133,23 @@ const App = () => {
                                 <Route path="/dashboard" element={<Dashboard />} />
                                 <Route path="/news" element={<NewsList />} />
                                 <Route path="/news/new" element={<NewsForm />} />
-                                <Route path="/news/edit/:id" element={<NewsForm />} />
-                                <Route path="/approvals" element={<Approvals />} />
-                                <Route path="/reports" element={<Reports />} />
-                                <Route path="/performance" element={<Performance />} />
-                                <Route path="*" element={<NotFoundLazy />} />
-                              </Routes>
-                            </AdminLayout>
-                          </Suspense>
-                        </ProtectedRoute>
+                                  <Route path="/news/edit/:id" element={<NewsForm />} />
+                                  <Route path="/approvals" element={<Approvals />} />
+                                  <Route path="/reports" element={<Reports />} />
+                                  <Route path="/performance" element={<Performance />} />
+                                  <Route
+                                    path="/settings"
+                                    element={
+                                      <ProtectedRoute requiredRole="admin">
+                                        <Settings />
+                                      </ProtectedRoute>
+                                    }
+                                  />
+                                  <Route path="*" element={<NotFoundLazy />} />
+                                </Routes>
+                              </AdminLayout>
+                            </Suspense>
+                          </ProtectedRoute>
                       </AdminProvider>
                     }
                   />
