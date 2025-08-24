@@ -26,7 +26,7 @@ interface AdminContextType {
     otp?: string
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  hasPermission: (permission: string) => boolean;
+  hasPermission: (resource: string, action: string) => boolean;
   hasRole: (role: string | string[]) => boolean;
   refreshUser: () => Promise<void>;
 }
@@ -256,25 +256,29 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     }
   };
 
-  const hasPermission = (permission: string): boolean => {
+  const hasPermission = (resource: string, action: string): boolean => {
     if (!user) return false;
-    
+
+    const permission = `${resource}.${action}`;
+
     // Define permissions based on roles
     const rolePermissions = {
       admin: ['*'], // Admin has all permissions
       editor: [
+        'news.read',
         'news.create',
-        'news.edit',
+        'news.update',
         'news.delete',
         'news.publish',
         'news.approve',
         'dashboard.view',
-        'users.view'
+        'users.read'
       ],
       columnist: [
+        'news.read',
         'news.create',
-        'news.edit.own',
-        'dashboard.view.limited'
+        'news.update',
+        'dashboard.view'
       ]
     };
 
