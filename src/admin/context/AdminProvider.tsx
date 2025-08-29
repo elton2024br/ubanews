@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import { totp } from 'otplib';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/use-toast';
@@ -24,8 +25,9 @@ interface AdminContextType {
     password: string,
     otp?: string
   ) => Promise<{ success: boolean; error?: string }>;
+<<<<<<< HEAD
   logout: (forceLogout?: boolean) => Promise<void>;
-  hasPermission: (permission: string) => boolean;
+  hasPermission: (resource: string, action: string) => boolean;
   hasRole: (role: string | string[]) => boolean;
   refreshUser: () => Promise<void>;
   recoverSession: () => Promise<boolean>;
@@ -180,6 +182,16 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       }, expiresIn);
     }
   }, [logout]);
+
+  const verifyTOTPHelper = (secret: string, token: string): boolean => {
+    try {
+      if (!secret) return false;
+      // Allow a one-step window to handle minor clock drift
+      return totp.verify({ token, secret, window: 1 });
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -382,12 +394,21 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       // Se 2FA está habilitado, verificar o código OTP
       if (adminUser.two_factor_enabled) {
         if (!otp) {
+<<<<<<< HEAD
           return { success: false, error: 'Código 2FA é obrigatório' };
         }
 
         // Verificar código TOTP (simplificado)
         const isValidOTP = await verifyTOTP(adminUser.two_factor_secret || '', otp);
         if (!isValidOTP) {
+=======
+          await supabase.auth.signOut();
+          return { success: false, error: 'Código 2FA necessário' };
+        }
+        const isValid = verifyTOTP(adminUser.two_factor_secret || '', otp);
+        if (!isValid) {
+          await supabase.auth.signOut();
+>>>>>>> c42c9b40847e1bff929b272fcc6f879584f566fd
           return { success: false, error: 'Código 2FA inválido' };
         }
       }
@@ -420,6 +441,7 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     }
   };
 
+<<<<<<< HEAD
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
     
@@ -430,6 +452,44 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     const rolePermissions: Record<string, string[]> = {
       editor: ['read', 'write', 'edit'],
       columnist: ['read', 'write']
+=======
+  const logout = async () => {
+    try {
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+      }
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const hasPermission = (resource: string, action: string): boolean => {
+    if (!user) return false;
+
+    const permission = `${resource}.${action}`;
+
+    // Define permissions based on roles
+    const rolePermissions = {
+      admin: ['*'], // Admin has all permissions
+      editor: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'news.publish',
+        'news.approve',
+        'dashboard.view',
+        'users.read'
+      ],
+      columnist: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'dashboard.view'
+      ]
+>>>>>>> c42c9b40847e1bff929b272fcc6f879584f566fd
     };
     
     const permissions = rolePermissions[user.role] || [];

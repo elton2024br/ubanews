@@ -46,7 +46,7 @@ const newsSchema = z.object({
   summary: z.string().min(20, 'Resumo deve ter pelo menos 20 caracteres').max(300, 'Resumo muito longo'),
   category: z.string().min(1, 'Categoria é obrigatória'),
   tags: z.string().optional(),
-  featured_image: z.string().url('URL da imagem inválida').optional().or(z.literal('')),
+  featured_image: z.string().optional().or(z.literal('')),
   status: z.enum(['draft', 'published', 'archived', 'pending']),
   publish_date: z.string().optional()
 });
@@ -73,6 +73,8 @@ const NewsManagement: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<NewsFormData>({
     resolver: zodResolver(newsSchema),
@@ -100,6 +102,57 @@ const NewsManagement: React.FC = () => {
     'Turismo',
     'Geral'
   ];
+
+  const getImageUrl = (path: string) => {
+    if (!path) return '';
+    return path.startsWith('http')
+      ? path
+      : supabase.storage.from('news-images').getPublicUrl(path).data.publicUrl;
+  };
+
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Apenas arquivos de imagem são permitidos');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      const fileExt = file.name.split('.').pop();
+      const filePath = `news-${Date.now()}.${fileExt}`;
+
+      const { error } = await supabase.storage
+        .from('news-images')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const {
+        data: { publicUrl }
+      } = supabase.storage.from('news-images').getPublicUrl(filePath);
+
+      form.setValue('featured_image', filePath, { shouldValidate: true });
+      setImagePreview(publicUrl);
+      toast.success('Imagem enviada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao enviar imagem:', error);
+      toast.error('Erro ao enviar imagem');
+      form.setError('featured_image', { message: 'Erro ao enviar imagem' });
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  };
 
   const fetchNews = async () => {
     try {
@@ -276,6 +329,7 @@ const NewsManagement: React.FC = () => {
       toast.success('Notícia criada com sucesso!');
       setIsCreateDialogOpen(false);
       form.reset();
+      setImagePreview(null);
       fetchNews();
     } catch (error) {
       console.error('[NewsManagement] Erro crítico ao criar notícia:', error);
@@ -386,6 +440,7 @@ const NewsManagement: React.FC = () => {
       setIsEditDialogOpen(false);
       setSelectedNews(null);
       form.reset();
+      setImagePreview(null);
       fetchNews();
     } catch (error) {
       console.error('[NewsManagement] Erro crítico ao atualizar notícia:', error);
@@ -580,6 +635,7 @@ const NewsManagement: React.FC = () => {
       status: newsItem.status,
       publish_date: newsItem.publish_date ? format(new Date(newsItem.publish_date), 'yyyy-MM-dd\'T\'HH:mm') : ''
     });
+    setImagePreview(newsItem.featured_image ? getImageUrl(newsItem.featured_image) : null);
     setIsEditDialogOpen(true);
   };
 
@@ -724,12 +780,25 @@ const NewsManagement: React.FC = () => {
         <FormField
           control={form.control}
           name="featured_image"
-          render={({ field }) => (
+          render={() => (
             <FormItem>
               <FormLabel>Imagem Destacada</FormLabel>
+              {imagePreview && (
+                <img
+                  src={imagePreview}
+                  alt="Pré-visualização"
+                  className="w-32 h-32 object-cover rounded mb-2"
+                />
+              )}
               <FormControl>
-                <Input placeholder="URL da imagem" {...field} />
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={uploadingImage}
+                />
               </FormControl>
+              <FormDescription>Envie uma imagem (máx. 5MB)</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -771,7 +840,13 @@ const NewsManagement: React.FC = () => {
             Atualizar
           </Button>
           {hasPermission('news', 'create') && (
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <Dialog
+              open={isCreateDialogOpen}
+              onOpenChange={(open) => {
+                setIsCreateDialogOpen(open);
+                if (open) setImagePreview(null);
+              }}
+            >
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
@@ -1055,8 +1130,8 @@ const NewsManagement: React.FC = () => {
               </div>
               
               {selectedNews.featured_image && (
-                <img 
-                  src={selectedNews.featured_image} 
+                <img
+                  src={getImageUrl(selectedNews.featured_image)}
                   alt={selectedNews.title}
                   className="w-full h-64 object-cover rounded-lg"
                 />

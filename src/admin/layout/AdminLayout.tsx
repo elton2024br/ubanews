@@ -152,8 +152,11 @@ export const AdminLayout: React.FC = () => {
     if (item.allowedRoles && !item.allowedRoles.includes(user?.role || 'columnist')) {
       return false;
     }
-    if (item.requiredPermission && !hasPermission(`${item.requiredPermission.resource}.${item.requiredPermission.action}`)) {
-      return false;
+    if (item.requiredPermission) {
+      const { resource, action } = item.requiredPermission;
+      if (!hasPermission(resource, action)) {
+        return false;
+      }
     }
     return true;
   });
