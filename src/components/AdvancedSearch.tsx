@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useButtonInteractions, useFormInteractions } from '@/hooks/useMicrointeractions';
-import { announceToScreenReader } from '@/utils/accessibility';
+import { announceToScreenReader, generateAriaLabel } from '@/utils/accessibility';
 
 interface SearchSuggestion {
   id: string;
@@ -65,10 +65,12 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState<SearchFilter[]>([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState<SearchSuggestion[]>(suggestions);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const filtersRef = useRef<HTMLDivElement>(null);
   
   // Microinteractions hooks
   const { createButtonProps } = useButtonInteractions();
@@ -169,12 +171,32 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setShowSuggestions(false);
+      setShowFilters(false);
+      setSelectedSuggestionIndex(-1);
       onClose?.();
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      handleSearch();
+      if (selectedSuggestionIndex >= 0 && filteredSuggestions[selectedSuggestionIndex]) {
+        handleSuggestionSelect(filteredSuggestions[selectedSuggestionIndex]);
+      } else {
+        handleSearch();
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (showSuggestions && filteredSuggestions.length > 0) {
+        setSelectedSuggestionIndex(prev => 
+          prev < filteredSuggestions.length - 1 ? prev + 1 : 0
+        );
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (showSuggestions && filteredSuggestions.length > 0) {
+        setSelectedSuggestionIndex(prev => 
+          prev > 0 ? prev - 1 : filteredSuggestions.length - 1
+        );
+      }
     }
-  }, [handleSearch, onClose]);
+  }, [handleSearch, onClose, selectedSuggestionIndex, filteredSuggestions, showSuggestions, handleSuggestionSelect]);
 
   // Get suggestion icon
   const getSuggestionIcon = (type: SearchSuggestion['type']) => {
@@ -191,17 +213,20 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   };
 
   return (
-    <div className={cn('relative w-full max-w-2xl mx-auto', className)}>
+    <div className={cn('relative w-full max-w-2xl mx-auto', className)} role="search">
       {/* Search Input */}
       <div className="relative">
         <div className="relative flex items-center">
-          <Search className="absolute left-3 w-5 h-5 text-muted-foreground pointer-events-none" />
+          <Search className="absolute left-3 w-5 h-5 text-muted-foreground pointer-events-none" aria-hidden="true" />
           
           <Input
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedSuggestionIndex(-1);
+            }}
             onFocus={() => setShowSuggestions(true)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
@@ -212,10 +237,13 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               'focus:border-primary focus:ring-2 focus:ring-primary/20',
               createFieldProps().className
             )}
-            aria-label="Campo de busca"
+            aria-label={generateAriaLabel('search-input', 'Campo de busca avançada')}
             aria-expanded={showSuggestions}
             aria-haspopup="listbox"
+            aria-owns={showSuggestions ? 'search-suggestions' : undefined}
+            aria-activedescendant={selectedSuggestionIndex >= 0 ? `suggestion-${selectedSuggestionIndex}` : undefined}
             role="combobox"
+            autoComplete="off"
           />
           
           {/* Voice Search Button */}
@@ -233,10 +261,12 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               isListening && 'text-red-500 animate-pulse',
               createButtonProps({ onClick: handleVoiceSearch }).className
             )}
-            aria-label={isListening ? 'Parar busca por voz' : 'Iniciar busca por voz'}
+            aria-label={generateAriaLabel('voice-search', isListening ? 'Parar busca por voz' : 'Iniciar busca por voz')}
+            aria-pressed={isListening}
             disabled={!recognitionRef.current}
+            title={!recognitionRef.current ? 'Busca por voz não disponível neste navegador' : undefined}
           >
-            <Mic className="w-4 h-4" />
+            <Mic className="w-4 h-4" aria-hidden="true" />
           </Button>
           
           {/* Filter Toggle Button */}
@@ -245,7 +275,10 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             variant="ghost"
             size="sm"
             {...createButtonProps({
-              onClick: () => setShowFilters(!showFilters),
+              onClick: () => {
+                setShowFilters(!showFilters);
+                announceToScreenReader(showFilters ? 'Filtros ocultados' : 'Filtros exibidos');
+              },
               hapticType: 'light',
               animationPreset: 'scaleIn'
             })}
@@ -254,34 +287,40 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               showFilters && 'text-primary',
               createButtonProps({ onClick: () => setShowFilters(!showFilters) }).className
             )}
-            aria-label="Filtros de busca"
+            aria-label={generateAriaLabel('filter-toggle', 'Alternar filtros de busca')}
             aria-expanded={showFilters}
+            aria-controls={showFilters ? 'search-filters' : undefined}
           >
-            <Filter className="w-4 h-4" />
+            <Filter className="w-4 h-4" aria-hidden="true" />
           </Button>
         </div>
         
         {/* Active Filters */}
         {activeFilters.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
+          <div className="flex flex-wrap gap-2 mt-3" role="group" aria-label="Filtros ativos">
             {activeFilters.map((filter) => (
               <Badge
                 key={filter.id}
                 variant="secondary"
                 className="flex items-center gap-1 px-3 py-1"
+                role="status"
+                aria-label={`Filtro ativo: ${filter.label}`}
               >
-                {filter.label}
+                <span>{filter.label}</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   {...createButtonProps({
-                    onClick: () => removeFilter(filter.id),
+                    onClick: () => {
+                      removeFilter(filter.id);
+                      announceToScreenReader(`Filtro ${filter.label} removido`);
+                    },
                     hapticType: 'light'
                   })}
-                  className="h-4 w-4 p-0 hover:bg-transparent"
-                  aria-label={`Remover filtro ${filter.label}`}
+                  className="h-4 w-4 p-0 hover:bg-transparent focus:ring-2 focus:ring-primary focus:ring-offset-1"
+                  aria-label={generateAriaLabel('remove-filter', `Remover filtro ${filter.label}`)}
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3 h-3" aria-hidden="true" />
                 </Button>
               </Badge>
             ))}
@@ -293,24 +332,32 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
       {showSuggestions && (
         <div
           ref={suggestionsRef}
+          id="search-suggestions"
           className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto"
           role="listbox"
-          aria-label="Sugestões de busca"
+          aria-label={generateAriaLabel('suggestions', 'Sugestões de busca')}
         >
           {filteredSuggestions.length > 0 ? (
             <div className="p-2">
               {filteredSuggestions.map((suggestion, index) => (
                 <button
                   key={suggestion.id}
+                  id={`suggestion-${index}`}
                   onClick={() => handleSuggestionSelect(suggestion)}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-accent rounded-lg transition-colors"
+                  onMouseEnter={() => setSelectedSuggestionIndex(index)}
+                  className={cn(
+                    "w-full flex items-center gap-3 p-3 text-left rounded-lg transition-colors",
+                    "hover:bg-accent focus:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    selectedSuggestionIndex === index && "bg-accent"
+                  )}
                   role="option"
-                  aria-selected={false}
+                  aria-selected={selectedSuggestionIndex === index}
+                  tabIndex={-1}
                 >
-                  {getSuggestionIcon(suggestion.type)}
+                  <span aria-hidden="true">{getSuggestionIcon(suggestion.type)}</span>
                   <span className="flex-1 text-sm">{suggestion.text}</span>
                   {suggestion.count && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground" aria-label={`${suggestion.count} resultados`}>
                       {suggestion.count} resultados
                     </span>
                   )}
@@ -318,7 +365,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               ))}
             </div>
           ) : (
-            <div className="p-4 text-center text-muted-foreground text-sm">
+            <div className="p-4 text-center text-muted-foreground text-sm" role="status">
               Nenhuma sugestão encontrada
             </div>
           )}
@@ -327,12 +374,22 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 
       {/* Filters Panel */}
       {showFilters && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg z-50 p-4">
+        <div
+          ref={filtersRef}
+          id="filters-panel"
+          className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg z-50 p-4"
+          role="dialog"
+          aria-labelledby="filters-title"
+          aria-modal="false"
+        >
           <div className="space-y-4">
+            <h2 id="filters-title" className="sr-only">Filtros de busca</h2>
+            
             {/* Categories */}
-            <div>
-              <h4 className="text-sm font-medium mb-2">Categorias</h4>
-              <div className="flex flex-wrap gap-2">
+            <fieldset>
+              <legend className="text-sm font-medium mb-2">Categorias</legend>
+              <div className="flex flex-wrap gap-2" role="group" aria-labelledby="category-legend">
+                <span id="category-legend" className="sr-only">Selecione uma ou mais categorias</span>
                 {categories.map((category) => {
                   const filter: SearchFilter = {
                     id: `category-${category}`,
@@ -348,25 +405,32 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                       variant={isActive ? 'default' : 'outline'}
                       size="sm"
                       {...createButtonProps({
-                        onClick: () => toggleFilter(filter),
+                        onClick: () => {
+                          toggleFilter(filter);
+                          const action = isActive ? 'removida' : 'adicionada';
+                          announceToScreenReader(`Categoria ${category} ${action}`);
+                        },
                         hapticType: 'light'
                       })}
                       className={cn(
-                        'h-8 text-xs',
+                        'h-8 text-xs focus:ring-2 focus:ring-primary focus:ring-offset-2',
                         createButtonProps({ onClick: () => toggleFilter(filter) }).className
                       )}
+                      aria-pressed={isActive}
+                      aria-label={generateAriaLabel('category-filter', `Filtrar por categoria ${category}`)}
                     >
                       {category}
                     </Button>
                   );
                 })}
               </div>
-            </div>
+            </fieldset>
             
             {/* Date Filters */}
-            <div>
-              <h4 className="text-sm font-medium mb-2">Período</h4>
-              <div className="flex flex-wrap gap-2">
+            <fieldset>
+              <legend className="text-sm font-medium mb-2">Período</legend>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="date-legend">
+                <span id="date-legend" className="sr-only">Selecione um período de tempo</span>
                 {dateFilters.map((dateFilter) => {
                   const filter: SearchFilter = {
                     id: `date-${dateFilter.value}`,
@@ -382,21 +446,27 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                       variant={isActive ? 'default' : 'outline'}
                       size="sm"
                       {...createButtonProps({
-                        onClick: () => toggleFilter(filter),
+                        onClick: () => {
+                          toggleFilter(filter);
+                          announceToScreenReader(`Período selecionado: ${dateFilter.label}`);
+                        },
                         hapticType: 'light'
                       })}
                       className={cn(
-                        'h-8 text-xs',
+                        'h-8 text-xs focus:ring-2 focus:ring-primary focus:ring-offset-2',
                         createButtonProps({ onClick: () => toggleFilter(filter) }).className
                       )}
+                      role="radio"
+                      aria-checked={isActive}
+                      aria-label={generateAriaLabel('date-filter', `Filtrar por período ${dateFilter.label}`)}
                     >
-                      <Calendar className="w-3 h-3 mr-1" />
+                      <Calendar className="w-3 h-3 mr-1" aria-hidden="true" />
                       {dateFilter.label}
                     </Button>
                   );
                 })}
               </div>
-            </div>
+            </fieldset>
           </div>
         </div>
       )}

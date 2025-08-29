@@ -7,6 +7,7 @@ import { useDynamicData, useMigrationMetrics } from '../hooks/useFeatureFlags';
 import { NewsArticle } from '@/shared/types/news';
 import MobileHeader from '../components/MobileHeader';
 import Footer from '../components/Footer';
+import { SEOArticle } from '@/components/SEO/SEOArticle';
 
 const NewsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -128,16 +129,18 @@ const NewsPage: React.FC = () => {
   }
   
   return (
-    <div className="min-h-screen bg-background">
-      <MobileHeader />
-      <main className="container mx-auto px-4 py-6">
-        <NewsDetail 
-          article={article} 
-          onBack={() => window.history.back()}
-        />
-      </main>
-      <Footer />
-    </div>
+    <SEOArticle newsData={article}>
+      <div className="min-h-screen bg-background">
+        <MobileHeader />
+        <main className="container mx-auto px-4 py-6">
+          <NewsDetail 
+            article={article} 
+            onBack={() => window.history.back()}
+          />
+        </main>
+        <Footer />
+      </div>
+    </SEOArticle>
   );
 };
 

@@ -18,32 +18,60 @@ type SupabaseAdminUser = {
 };
 
 const fetchUsers = async (): Promise<User[]> => {
-  const { data, error } = await supabase
-    .from('admin_users')
-    .select('*')
-    .order('created_at', { ascending: false });
+  // Fetch both admin users and regular user profiles
+  const [adminUsersResult, userProfilesResult] = await Promise.all([
+    supabase
+      .from('admin_users')
+      .select('*')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('user_profiles')
+      .select('id, email, full_name, avatar_url, created_at, updated_at')
+      .order('created_at', { ascending: false })
+  ]);
 
-  if (error) {
-    console.error('Error fetching users:', error);
-    throw new Error(error.message);
+  if (adminUsersResult.error) {
+    console.error('Error fetching admin users:', adminUsersResult.error);
+    throw new Error(adminUsersResult.error.message);
   }
 
-  // Transform the data from Supabase to match our app's User type
-  const transformedData: User[] = (data as SupabaseAdminUser[]).map(user => ({
+  if (userProfilesResult.error) {
+    console.error('Error fetching user profiles:', userProfilesResult.error);
+    throw new Error(userProfilesResult.error.message);
+  }
+
+  // Transform admin users
+  const adminUsers: User[] = (adminUsersResult.data as SupabaseAdminUser[]).map(user => ({
     id: user.id,
     email: user.email,
-    name: user.full_name, // Transformation from full_name to name
+    name: user.full_name,
     role: user.role,
     is_active: user.is_active,
     two_factor_enabled: user.two_factor_enabled,
-    last_login: user.last_login_at, // Transformation from last_login_at to last_login
+    last_login: user.last_login_at,
     created_at: user.created_at,
     updated_at: user.updated_at,
-    avatar: user.avatar_url, // Transformation from avatar_url to avatar
-    permissions: [], // Permissions would be loaded separately if needed
+    avatar: user.avatar_url,
+    permissions: [],
   }));
 
-  return transformedData;
+  // Transform regular user profiles (they don't have admin roles)
+  const regularUsers: User[] = (userProfilesResult.data || []).map(user => ({
+    id: user.id,
+    email: user.email || '',
+    name: user.full_name || 'Usuário',
+    role: 'columnist' as const, // Regular users are treated as columnists
+    is_active: true, // Assume active if they have a profile
+    two_factor_enabled: false, // Regular users don't have 2FA
+    last_login: undefined,
+    created_at: user.created_at,
+    updated_at: user.updated_at,
+    avatar: user.avatar_url,
+    permissions: [],
+  }));
+
+  // Combine and return all users, with admin users first
+  return [...adminUsers, ...regularUsers];
 };
 
 export const useUsers = () => {

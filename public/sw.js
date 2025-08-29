@@ -1,365 +1,348 @@
-// Service Worker para UbaNews - Cache Estratégico
+// Service Worker para Push Notifications
+// Gerencia notificações push em background e interações do usuário
+
 const CACHE_NAME = 'ubanews-v1';
-const STATIC_CACHE = 'ubanews-static-v1';
-const DYNAMIC_CACHE = 'ubanews-dynamic-v1';
-const IMAGE_CACHE = 'ubanews-images-v1';
+const NOTIFICATION_TAG = 'ubanews-notification';
 
-// Recursos críticos para cache imediato
-const CRITICAL_RESOURCES = [
+// URLs para cache offline
+const urlsToCache = [
   '/',
-  '/index.html',
   '/manifest.json',
-  '/favicon.ico',
-  // CSS e JS principais serão adicionados automaticamente pelo Vite
+  '/favicon.ico'
 ];
-
-// Recursos para cache em runtime
-const RUNTIME_CACHE_PATTERNS = [
-  // API endpoints
-  /\/api\//,
-  // Imagens
-  /\.(jpg|jpeg|png|gif|webp|avif|svg)$/,
-  // Fontes
-  /\.(woff|woff2|ttf|eot)$/,
-  // CSS e JS
-  /\.(css|js)$/
-];
-
-// Configurações de cache por tipo
-const CACHE_STRATEGIES = {
-  // Cache First para recursos estáticos
-  static: {
-    cacheName: STATIC_CACHE,
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 dias
-    maxEntries: 100
-  },
-  // Network First para conteúdo dinâmico
-  dynamic: {
-    cacheName: DYNAMIC_CACHE,
-    maxAge: 24 * 60 * 60 * 1000, // 1 dia
-    maxEntries: 50
-  },
-  // Cache First para imagens com fallback
-  images: {
-    cacheName: IMAGE_CACHE,
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
-    maxEntries: 200
-  }
-};
 
 // Instalação do Service Worker
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker...');
+  console.log('[SW] Installing service worker');
   
   event.waitUntil(
-    caches.open(STATIC_CACHE)
+    caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Caching critical resources');
-        return cache.addAll(CRITICAL_RESOURCES);
+        console.log('[SW] Caching app shell');
+        return cache.addAll(urlsToCache);
       })
       .then(() => {
-        console.log('[SW] Critical resources cached');
+        // Força a ativação imediata
         return self.skipWaiting();
-      })
-      .catch((error) => {
-        console.error('[SW] Failed to cache critical resources:', error);
       })
   );
 });
 
 // Ativação do Service Worker
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker...');
+  console.log('[SW] Activating service worker');
   
   event.waitUntil(
-    Promise.all([
-      // Limpar caches antigos
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames
-            .filter((cacheName) => {
-              return ![
-                STATIC_CACHE,
-                DYNAMIC_CACHE,
-                IMAGE_CACHE
-              ].includes(cacheName);
-            })
-            .map((cacheName) => {
-              console.log('[SW] Deleting old cache:', cacheName);
-              return caches.delete(cacheName);
-            })
-        );
-      }),
-      // Tomar controle de todas as abas
-      self.clients.claim()
-    ])
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('[SW] Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => {
+      // Assume controle de todas as abas
+      return self.clients.claim();
+    })
   );
 });
 
-// Interceptação de requisições
+// Interceptação de requisições para cache offline
 self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-  
-  // Ignorar requisições não-HTTP
-  if (!request.url.startsWith('http')) {
+  // Só intercepta requisições GET
+  if (event.request.method !== 'GET') {
     return;
   }
+
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        // Retorna do cache se disponível
+        if (response) {
+          return response;
+        }
+
+        // Faz a requisição e adiciona ao cache
+        return fetch(event.request).then((response) => {
+          // Verifica se a resposta é válida
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+
+          // Clona a resposta para o cache
+          const responseToCache = response.clone();
+
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+
+          return response;
+        });
+      })
+  );
+});
+
+// Recebimento de Push Notifications
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push notification received:', event);
+
+  let notificationData = {
+    title: 'UbaNews',
+    body: 'Nova notificação disponível',
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    tag: NOTIFICATION_TAG,
+    requireInteraction: false,
+    silent: false,
+    data: {
+      url: '/',
+      timestamp: Date.now()
+    }
+  };
+
+  // Parse dos dados da notificação se disponível
+  if (event.data) {
+    try {
+      const pushData = event.data.json();
+      notificationData = {
+        ...notificationData,
+        ...pushData,
+        data: {
+          ...notificationData.data,
+          ...pushData.data
+        }
+      };
+    } catch (error) {
+      console.error('[SW] Error parsing push data:', error);
+      notificationData.body = event.data.text() || notificationData.body;
+    }
+  }
+
+  // Personalização baseada no tipo de notificação
+  if (notificationData.data.type) {
+    switch (notificationData.data.type) {
+      case 'news_published':
+        notificationData.icon = '/icons/news.png';
+        notificationData.badge = '/icons/news-badge.png';
+        notificationData.actions = [
+          {
+            action: 'view',
+            title: 'Ver Notícia',
+            icon: '/icons/view.png'
+          },
+          {
+            action: 'dismiss',
+            title: 'Dispensar',
+            icon: '/icons/dismiss.png'
+          }
+        ];
+        break;
+        
+      case 'comment_new':
+        notificationData.icon = '/icons/comment.png';
+        notificationData.badge = '/icons/comment-badge.png';
+        notificationData.actions = [
+          {
+            action: 'reply',
+            title: 'Responder',
+            icon: '/icons/reply.png'
+          },
+          {
+            action: 'view',
+            title: 'Ver Comentário',
+            icon: '/icons/view.png'
+          }
+        ];
+        break;
+        
+      case 'system_update':
+        notificationData.icon = '/icons/system.png';
+        notificationData.badge = '/icons/system-badge.png';
+        notificationData.requireInteraction = true;
+        break;
+        
+      case 'deadline_approaching':
+        notificationData.icon = '/icons/warning.png';
+        notificationData.badge = '/icons/warning-badge.png';
+        notificationData.requireInteraction = true;
+        notificationData.silent = false;
+        break;
+    }
+  }
+
+  // Exibe a notificação
+  event.waitUntil(
+    self.registration.showNotification(notificationData.title, {
+      body: notificationData.body,
+      icon: notificationData.icon,
+      badge: notificationData.badge,
+      tag: notificationData.tag,
+      data: notificationData.data,
+      requireInteraction: notificationData.requireInteraction,
+      silent: notificationData.silent,
+      actions: notificationData.actions || [],
+      timestamp: notificationData.data.timestamp
+    })
+  );
+});
+
+// Clique na notificação
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event);
   
-  // Estratégia baseada no tipo de recurso
-  if (isImageRequest(request)) {
-    event.respondWith(handleImageRequest(request));
-  } else if (isStaticResource(request)) {
-    event.respondWith(handleStaticRequest(request));
-  } else if (isAPIRequest(request)) {
-    event.respondWith(handleAPIRequest(request));
-  } else {
-    event.respondWith(handleDynamicRequest(request));
+  const notification = event.notification;
+  const action = event.action;
+  const data = notification.data || {};
+  
+  // Fecha a notificação
+  notification.close();
+  
+  // Determina a URL de destino
+  let targetUrl = data.url || '/';
+  
+  // Ações específicas
+  switch (action) {
+    case 'view':
+      if (data.news_id) {
+        targetUrl = `/news/${data.news_id}`;
+      } else if (data.comment_id) {
+        targetUrl = `/comments/${data.comment_id}`;
+      }
+      break;
+      
+    case 'reply':
+      if (data.comment_id) {
+        targetUrl = `/comments/${data.comment_id}#reply`;
+      }
+      break;
+      
+    case 'dismiss':
+      // Apenas fecha a notificação
+      return;
+      
+    default:
+      // Clique na notificação sem ação específica
+      if (data.news_id) {
+        targetUrl = `/news/${data.news_id}`;
+      } else if (data.comment_id) {
+        targetUrl = `/comments/${data.comment_id}`;
+      }
+      break;
+  }
+  
+  // Abre ou foca na janela do app
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Procura por uma janela já aberta com a URL
+        for (const client of clientList) {
+          if (client.url.includes(targetUrl) && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        
+        // Procura por qualquer janela do app aberta
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && 'navigate' in client) {
+            client.navigate(targetUrl);
+            return client.focus();
+          }
+        }
+        
+        // Abre uma nova janela
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      })
+  );
+});
+
+// Fechamento da notificação
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification closed:', event);
+  
+  const notification = event.notification;
+  const data = notification.data || {};
+  
+  // Analytics ou tracking do fechamento
+  if (data.tracking_id) {
+    // Enviar evento de fechamento para analytics
+    fetch('/api/analytics/notification-closed', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        tracking_id: data.tracking_id,
+        timestamp: Date.now()
+      })
+    }).catch(error => {
+      console.error('[SW] Error tracking notification close:', error);
+    });
   }
 });
 
-// Verificar se é requisição de imagem
-function isImageRequest(request) {
-  return request.destination === 'image' || 
-         /\.(jpg|jpeg|png|gif|webp|avif|svg)$/i.test(request.url);
-}
-
-// Verificar se é recurso estático
-function isStaticResource(request) {
-  return request.destination === 'style' ||
-         request.destination === 'script' ||
-         request.destination === 'font' ||
-         /\.(css|js|woff|woff2|ttf|eot)$/i.test(request.url);
-}
-
-// Verificar se é requisição de API
-function isAPIRequest(request) {
-  return request.url.includes('/api/') || 
-         request.url.includes('api.');
-}
-
-// Cache First para imagens
-async function handleImageRequest(request) {
-  try {
-    const cache = await caches.open(IMAGE_CACHE);
-    const cachedResponse = await cache.match(request);
-    
-    if (cachedResponse) {
-      // Verificar se não expirou
-      const dateHeader = cachedResponse.headers.get('date');
-      if (dateHeader) {
-        const cachedDate = new Date(dateHeader);
-        const now = new Date();
-        if (now - cachedDate < CACHE_STRATEGIES.images.maxAge) {
-          return cachedResponse;
-        }
-      }
-    }
-    
-    // Buscar da rede
-    const networkResponse = await fetch(request);
-    
-    if (networkResponse.ok) {
-      // Clonar para cache
-      const responseClone = networkResponse.clone();
-      await cache.put(request, responseClone);
-      
-      // Limpar cache se necessário
-      await cleanupCache(IMAGE_CACHE, CACHE_STRATEGIES.images.maxEntries);
-    }
-    
-    return networkResponse;
-  } catch (error) {
-    console.error('[SW] Image request failed:', error);
-    
-    // Tentar cache como fallback
-    const cache = await caches.open(IMAGE_CACHE);
-    const cachedResponse = await cache.match(request);
-    
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    
-    // Retornar imagem placeholder
-    return new Response(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="#f3f4f6"/><text x="200" y="150" text-anchor="middle" fill="#9ca3af" font-family="Arial" font-size="16">Imagem não disponível</text></svg>',
-      {
-        headers: {
-          'Content-Type': 'image/svg+xml',
-          'Cache-Control': 'no-cache'
-        }
-      }
-    );
-  }
-}
-
-// Cache First para recursos estáticos
-async function handleStaticRequest(request) {
-  try {
-    const cache = await caches.open(STATIC_CACHE);
-    const cachedResponse = await cache.match(request);
-    
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    
-    const networkResponse = await fetch(request);
-    
-    if (networkResponse.ok) {
-      const responseClone = networkResponse.clone();
-      await cache.put(request, responseClone);
-      await cleanupCache(STATIC_CACHE, CACHE_STRATEGIES.static.maxEntries);
-    }
-    
-    return networkResponse;
-  } catch (error) {
-    console.error('[SW] Static request failed:', error);
-    
-    const cache = await caches.open(STATIC_CACHE);
-    return await cache.match(request) || new Response('Recurso não disponível', {
-      status: 503,
-      statusText: 'Service Unavailable'
-    });
-  }
-}
-
-// Network First para APIs
-async function handleAPIRequest(request) {
-  try {
-    const networkResponse = await fetch(request, {
-      timeout: 5000 // 5 segundos timeout
-    });
-    
-    if (networkResponse.ok) {
-      // Cache apenas GET requests
-      if (request.method === 'GET') {
-        const cache = await caches.open(DYNAMIC_CACHE);
-        const responseClone = networkResponse.clone();
-        await cache.put(request, responseClone);
-        await cleanupCache(DYNAMIC_CACHE, CACHE_STRATEGIES.dynamic.maxEntries);
-      }
-    }
-    
-    return networkResponse;
-  } catch (error) {
-    console.error('[SW] API request failed:', error);
-    
-    // Fallback para cache apenas em GET requests
-    if (request.method === 'GET') {
-      const cache = await caches.open(DYNAMIC_CACHE);
-      const cachedResponse = await cache.match(request);
-      
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-    }
-    
-    return new Response(
-      JSON.stringify({
-        error: 'Sem conexão com a internet',
-        message: 'Verifique sua conexão e tente novamente',
-        offline: true
-      }),
-      {
-        status: 503,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-  }
-}
-
-// Network First para conteúdo dinâmico
-async function handleDynamicRequest(request) {
-  try {
-    // Verificar se a URL é válida antes de fazer fetch
-    const url = new URL(request.url);
-    
-    // Evitar fetch de recursos que sabemos que não existem
-    if (url.pathname.includes('logo-ubatuba.webp')) {
-      throw new Error('Resource not found: logo-ubatuba.webp');
-    }
-    
-    const networkResponse = await fetch(request, {
-      cache: 'no-cache',
-      mode: 'cors'
-    });
-    
-    if (networkResponse.ok && request.method === 'GET') {
-      const cache = await caches.open(DYNAMIC_CACHE);
-      const responseClone = networkResponse.clone();
-      await cache.put(request, responseClone);
-      await cleanupCache(DYNAMIC_CACHE, CACHE_STRATEGIES.dynamic.maxEntries);
-    }
-    
-    return networkResponse;
-  } catch (error) {
-    console.error('[SW] Dynamic request failed:', error);
-    
-    if (request.method === 'GET') {
-      const cache = await caches.open(DYNAMIC_CACHE);
-      const cachedResponse = await cache.match(request);
-      
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-    }
-    
-    // Página offline para navegação
-    if (request.mode === 'navigate') {
-      return caches.match('/') || new Response(
-        `<!DOCTYPE html>
-        <html>
-        <head>
-          <title>UbaNews - Offline</title>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-            .offline { color: #666; }
-            .retry { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
-          </style>
-        </head>
-        <body>
-          <h1>UbaNews</h1>
-          <div class="offline">
-            <h2>Você está offline</h2>
-            <p>Verifique sua conexão com a internet e tente novamente.</p>
-            <button class="retry" onclick="window.location.reload()">Tentar Novamente</button>
-          </div>
-        </body>
-        </html>`,
-        {
-          headers: {
-            'Content-Type': 'text/html'
-          }
-        }
-      );
-    }
-    
-    return new Response('Sem conexão', {
-      status: 503,
-      statusText: 'Service Unavailable'
-    });
-  }
-}
-
-// Limpeza de cache por limite de entradas
-async function cleanupCache(cacheName, maxEntries) {
-  const cache = await caches.open(cacheName);
-  const keys = await cache.keys();
+// Sincronização em background
+self.addEventListener('sync', (event) => {
+  console.log('[SW] Background sync:', event.tag);
   
-  if (keys.length > maxEntries) {
-    const keysToDelete = keys.slice(0, keys.length - maxEntries);
-    await Promise.all(
-      keysToDelete.map(key => cache.delete(key))
+  if (event.tag === 'notification-sync') {
+    event.waitUntil(
+      syncNotifications()
     );
+  }
+});
+
+// Função para sincronizar notificações
+async function syncNotifications() {
+  try {
+    console.log('[SW] Syncing notifications...');
+    
+    // Busca notificações pendentes do IndexedDB ou localStorage
+    const pendingNotifications = await getPendingNotifications();
+    
+    for (const notification of pendingNotifications) {
+      try {
+        // Envia notificação para o servidor
+        await fetch('/api/notifications/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(notification)
+        });
+        
+        // Remove da lista de pendentes
+        await removePendingNotification(notification.id);
+        
+      } catch (error) {
+        console.error('[SW] Error syncing notification:', error);
+      }
+    }
+    
+  } catch (error) {
+    console.error('[SW] Error in sync process:', error);
   }
 }
 
-// Mensagens do cliente
+// Funções auxiliares para gerenciar notificações pendentes
+async function getPendingNotifications() {
+  // Implementar busca no IndexedDB ou localStorage
+  return [];
+}
+
+async function removePendingNotification(id) {
+  // Implementar remoção do IndexedDB ou localStorage
+  console.log('[SW] Removing pending notification:', id);
+}
+
+// Mensagens do cliente (página web)
 self.addEventListener('message', (event) => {
+  console.log('[SW] Message received:', event.data);
+  
   const { type, payload } = event.data;
   
   switch (type) {
@@ -367,16 +350,28 @@ self.addEventListener('message', (event) => {
       self.skipWaiting();
       break;
       
-    case 'GET_CACHE_SIZE':
-      getCacheSize().then(size => {
-        event.ports[0].postMessage({ type: 'CACHE_SIZE', payload: size });
+    case 'GET_VERSION':
+      event.ports[0].postMessage({
+        version: CACHE_NAME,
+        timestamp: Date.now()
       });
       break;
       
-    case 'CLEAR_CACHE':
-      clearAllCaches().then(() => {
-        event.ports[0].postMessage({ type: 'CACHE_CLEARED' });
-      });
+    case 'CLEAR_NOTIFICATIONS':
+      // Limpa todas as notificações
+      self.registration.getNotifications()
+        .then(notifications => {
+          notifications.forEach(notification => {
+            notification.close();
+          });
+        });
+      break;
+      
+    case 'UPDATE_BADGE':
+      // Atualiza badge do app (se suportado)
+      if ('setAppBadge' in navigator) {
+        navigator.setAppBadge(payload.count || 0);
+      }
       break;
       
     default:
@@ -384,49 +379,13 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Obter tamanho do cache
-async function getCacheSize() {
-  const cacheNames = await caches.keys();
-  let totalSize = 0;
-  
-  for (const cacheName of cacheNames) {
-    const cache = await caches.open(cacheName);
-    const keys = await cache.keys();
-    totalSize += keys.length;
-  }
-  
-  return totalSize;
-}
-
-// Limpar todos os caches
-async function clearAllCaches() {
-  const cacheNames = await caches.keys();
-  await Promise.all(
-    cacheNames.map(cacheName => caches.delete(cacheName))
-  );
-}
-
-// Sincronização em background
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'background-sync') {
-    event.waitUntil(doBackgroundSync());
-  }
+// Error handling global
+self.addEventListener('error', (event) => {
+  console.error('[SW] Service Worker error:', event.error);
 });
 
-// Executar sincronização em background
-async function doBackgroundSync() {
-  try {
-    // Sincronizar dados pendentes
-    console.log('[SW] Background sync executed');
-    
-    // Aqui você pode implementar lógica para:
-    // - Enviar dados pendentes
-    // - Atualizar cache com novos conteúdos
-    // - Limpar dados expirados
-    
-  } catch (error) {
-    console.error('[SW] Background sync failed:', error);
-  }
-}
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('[SW] Unhandled promise rejection:', event.reason);
+});
 
 console.log('[SW] Service Worker loaded successfully');

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useCSRF } from '../../../utils/csrf';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -63,6 +64,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onClose }) => {
   const isEditing = !!initialData;
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
+  const csrfToken = useCSRF();
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(getDynamicSchema(isEditing)),
@@ -114,6 +116,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onClose }) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <input type="hidden" name="csrf_token" value={csrfToken} />
         <fieldset disabled={isPending} className="space-y-6">
           <FormField
             control={form.control}

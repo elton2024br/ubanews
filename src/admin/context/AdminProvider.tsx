@@ -114,6 +114,57 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
 
 
 
+
+
+  const logout = async (forceLogout = false): Promise<void> => {
+    console.log('[AdminProvider] Iniciando processo de logout...', { forceLogout });
+    try {
+      setLoading(true);
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+      }
+      
+      // Limpar estado local primeiro
+      setUser(null);
+      
+      // Se não é logout forçado, tentar logout do Supabase
+      if (!forceLogout) {
+        try {
+          const { error } = await supabase.auth.signOut({ scope: 'local' });
+          if (error) {
+            console.error('[AdminProvider] Erro durante logout:', error);
+            // Se falhar, fazer logout forçado
+            if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_ABORTED')) {
+              console.warn('[AdminProvider] Erro de rede no logout, fazendo logout local...');
+              return logout(true);
+            }
+            console.warn('[AdminProvider] Logout do Supabase falhou, mas estado local foi limpo');
+          } else {
+            console.log('[AdminProvider] Logout realizado com sucesso');
+          }
+        } catch (networkError) {
+          console.warn('[AdminProvider] Erro de rede no logout, fazendo logout local...', networkError);
+          return logout(true);
+        }
+      } else {
+        console.log('[AdminProvider] Logout forçado - apenas limpeza local');
+      }
+      
+      // Usar window.location para redirecionamento mais confiável
+      console.log('[AdminProvider] Redirecionando para página de login...');
+      window.location.href = '/admin/login';
+      
+    } catch (error) {
+      console.error('[AdminProvider] Erro crítico durante logout:', error);
+      
+      // Mesmo com erro, limpar estado local e redirecionar
+      setUser(null);
+      window.location.href = '/admin/login';
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const startSessionTimer = useCallback((session: Session) => {
     if (sessionTimeoutRef.current) {
       clearTimeout(sessionTimeoutRef.current);
@@ -271,218 +322,150 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     }
   };
 
-  const verifyTOTP = (secret: string, token: string): boolean => {
-    // Simplified TOTP verification for browser compatibility
-    // In production, consider using a proper TOTP library like otplib
-    return token.length === 6 && /^\d{6}$/.test(token);
+  const verifyTOTP = async (secret: string, token: string): Promise<boolean> => {
+    try {
+      // Para desenvolvimento, aceitar código padrão
+      if (process.env.NODE_ENV === 'development' && token === '123456') {
+        return true;
+      }
+      
+      // Verificação básica de formato
+      if (token.length !== 6 || !/^\d{6}$/.test(token)) {
+        return false;
+      }
+      
+      // Em produção, implementar verificação real do TOTP
+      // Por enquanto, retornar false para códigos inválidos
+      return false;
+    } catch (error) {
+      console.error('Erro na verificação TOTP:', error);
+      return false;
+    }
   };
 
-  const login = async (email: string, password: string, otp?: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (
+    email: string,
+    password: string,
+    otp?: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
-      console.log('[AdminProvider] Iniciando processo de login para:', email);
       setLoading(true);
       
-      // First authenticate with Supabase Auth
-      console.log('[AdminProvider] Autenticando com Supabase Auth...');
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (authError) {
-        console.error('[AdminProvider] Erro de autenticação:', {
-          error: authError.message,
-          code: authError.code,
-          details: authError.details
-        });
-        return { success: false, error: authError.message };
-      }
-
-      if (!authData.user) {
-        console.error('[AdminProvider] Dados do usuário não retornados após autenticação');
-        return { success: false, error: 'Falha na autenticação' };
-      }
-
-      console.log('[AdminProvider] Autenticação bem-sucedida, verificando permissões administrativas...');
-      
-      // Then check if user exists in admin_users table
-      const { data: adminData, error: adminError } = await supabase
+      // Primeiro, verificar se o usuário existe na tabela admin_users
+      const { data: adminUser, error: adminError } = await supabase
         .from('admin_users')
         .select('*')
         .eq('email', email)
-        .eq('is_active', true)
         .single();
 
-      if (adminError) {
-        console.error('[AdminProvider] Erro ao verificar usuário administrativo:', {
-          error: adminError.message,
-          code: adminError.code,
-          details: adminError.details,
-          hint: adminError.hint
-        });
-        await supabase.auth.signOut();
-        return { success: false, error: 'Usuário não autorizado para acessar o painel administrativo' };
+      if (adminError || !adminUser) {
+        console.error('[AdminProvider] Usuário não encontrado ou erro:', adminError);
+        return { success: false, error: 'Credenciais inválidas' };
       }
 
-      if (!adminData) {
-        console.error('[AdminProvider] Usuário administrativo não encontrado na tabela admin_users');
-        await supabase.auth.signOut();
-        return { success: false, error: 'Usuário não autorizado para acessar o painel administrativo' };
+      if (!adminUser.is_active) {
+        console.error('[AdminProvider] Usuário inativo:', email);
+        return { success: false, error: 'Usuário desativado' };
       }
 
-      console.log('[AdminProvider] Usuário administrativo encontrado:', {
-        id: adminData.id,
-        email: adminData.email,
-        role: adminData.role,
-        name: adminData.full_name
+      // Autenticar com Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      // Check 2FA if enabled
-      if (adminData.two_factor_enabled && otp) {
-        console.log('[AdminProvider] Verificando código 2FA...');
-        if (!verifyTOTP(adminData.two_factor_secret || '', otp)) {
+      if (authError) {
+        console.error('[AdminProvider] Erro de autenticação:', authError);
+        return { success: false, error: 'Credenciais inválidas' };
+      }
+
+      // Se 2FA está habilitado, verificar o código OTP
+      if (adminUser.two_factor_enabled) {
+        if (!otp) {
+          return { success: false, error: 'Código 2FA é obrigatório' };
+        }
+
+        // Verificar código TOTP (simplificado)
+        const isValidOTP = await verifyTOTP(adminUser.two_factor_secret || '', otp);
+        if (!isValidOTP) {
           return { success: false, error: 'Código 2FA inválido' };
         }
       }
 
-      // Update last login
-      console.log('[AdminProvider] Atualizando último login...');
-      await supabase
+      // Atualizar último login
+      const now = new Date().toISOString();
+      const { error: updateError } = await supabase
         .from('admin_users')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('id', adminData.id);
+        .update({ last_login_at: now })
+        .eq('id', adminUser.id);
 
-      setUser(adminData);
+      if (updateError) {
+        console.error('[AdminProvider] Erro ao atualizar último login:', updateError);
+      }
+
+      // Configurar timer de sessão
+      if (authData.session) {
+        startSessionTimer(authData.session);
+      }
+
+      setUser(adminUser);
+      console.log('[AdminProvider] Login bem-sucedido:', email);
       
-      console.log('[AdminProvider] Login concluído com sucesso!');
-      toast({
-        title: 'Login realizado com sucesso',
-        description: `Bem-vindo, ${adminData.full_name || adminData.email}!`
-      });
-
       return { success: true };
     } catch (error) {
       console.error('[AdminProvider] Erro crítico durante login:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro interno do servidor';
-      return { success: false, error: errorMessage };
+      return { success: false, error: 'Erro ao processar login' };
     } finally {
       setLoading(false);
-    }
-  };
-
-  const logout = async (forceLogout = false): Promise<void> => {
-    console.log('[AdminProvider] Iniciando processo de logout...', { forceLogout });
-    try {
-      setLoading(true);
-      if (sessionTimeoutRef.current) {
-        clearTimeout(sessionTimeoutRef.current);
-      }
-      
-      // Limpar estado local primeiro
-      setUser(null);
-      
-      // Se não é logout forçado, tentar logout do Supabase
-      if (!forceLogout) {
-        try {
-          const { error } = await supabase.auth.signOut({ scope: 'local' });
-          if (error) {
-            console.error('[AdminProvider] Erro durante logout:', error);
-            // Se falhar, fazer logout forçado
-            if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_ABORTED')) {
-              console.warn('[AdminProvider] Erro de rede no logout, fazendo logout local...');
-              return logout(true);
-            }
-            console.warn('[AdminProvider] Logout do Supabase falhou, mas estado local foi limpo');
-          } else {
-            console.log('[AdminProvider] Logout realizado com sucesso');
-          }
-        } catch (networkError) {
-          console.warn('[AdminProvider] Erro de rede no logout, fazendo logout local...', networkError);
-          return logout(true);
-        }
-      } else {
-        console.log('[AdminProvider] Logout forçado - apenas limpeza local');
-      }
-      
-      // Usar window.location para redirecionamento mais confiável
-      console.log('[AdminProvider] Redirecionando para página de login...');
-      window.location.href = '/admin/login';
-      
-    } catch (error) {
-      console.error('[AdminProvider] Erro crítico durante logout:', error);
-      
-      // Mesmo com erro, limpar estado local e redirecionar
-      setUser(null);
-      window.location.href = '/admin/login';
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Função para recuperar sessão em caso de falha de refresh token
-  const recoverSession = async () => {
-    console.log('[AdminProvider] Tentando recuperar sessão após falha de refresh token...');
-    try {
-      // Tentar obter sessão atual
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error || !session) {
-        console.log('[AdminProvider] Sessão não pode ser recuperada, fazendo logout...');
-        await logout(true);
-        return false;
-      }
-      
-      // Verificar se a sessão ainda é válida
-      const now = Math.floor(Date.now() / 1000);
-      if (session.expires_at && session.expires_at < now) {
-        console.log('[AdminProvider] Sessão expirada, fazendo logout...');
-        await logout(true);
-        return false;
-      }
-      
-      console.log('[AdminProvider] Sessão recuperada com sucesso');
-      return true;
-    } catch (error) {
-      console.error('[AdminProvider] Erro ao recuperar sessão:', error);
-      await logout(true);
-      return false;
     }
   };
 
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
     
-    // Define permissions based on roles
-    const rolePermissions = {
-      admin: ['*'], // Admin has all permissions
-      editor: [
-        'news.create',
-        'news.edit',
-        'news.delete',
-        'news.publish',
-        'news.approve',
-        'dashboard.view',
-        'users.view'
-      ],
-      columnist: [
-        'news.create',
-        'news.edit.own',
-        'dashboard.view.limited'
-      ]
+    // Admin tem todas as permissões
+    if (user.role === 'admin') return true;
+    
+    // Mapear permissões por role
+    const rolePermissions: Record<string, string[]> = {
+      editor: ['read', 'write', 'edit'],
+      columnist: ['read', 'write']
     };
-
-    const userPermissions = rolePermissions[user.role] || [];
-    return userPermissions.includes('*') || userPermissions.includes(permission);
+    
+    const permissions = rolePermissions[user.role] || [];
+    return permissions.includes(permission);
   };
 
   const hasRole = (role: string | string[]): boolean => {
     if (!user) return false;
     
-    if (Array.isArray(role)) {
-      return role.includes(user.role);
+    const roles = Array.isArray(role) ? role : [role];
+    return roles.includes(user.role);
+  };
+
+  const recoverSession = async (): Promise<boolean> => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('[AdminProvider] Erro ao recuperar sessão:', error);
+        return false;
+      }
+
+      if (session?.user?.email) {
+        const adminUser = await loadAdminUser(session.user.email);
+        if (adminUser) {
+          setUser(adminUser);
+          startSessionTimer(session);
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('[AdminProvider] Erro ao recuperar sessão:', error);
+      return false;
     }
-    
-    return user.role === role;
   };
 
   const value: AdminContextType = {

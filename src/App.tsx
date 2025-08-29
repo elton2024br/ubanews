@@ -51,6 +51,12 @@ const App = () => {
   // Initialize Resource Preloading on app start
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // DEBUG: Verificar variáveis de ambiente
+      console.log('🔍 [App] DEBUG - Verificando variáveis de ambiente:');
+      console.log('🔍 [App] VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL ? 'DEFINIDA' : 'UNDEFINED');
+      console.log('🔍 [App] VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'DEFINIDA (length: ' + import.meta.env.VITE_SUPABASE_ANON_KEY?.length + ')' : 'UNDEFINED');
+      console.log('🔍 [App] Todas as variáveis VITE_:', Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')));
+      
       // Service Worker registration is handled automatically by the hook
       // (disabled in development mode to prevent conflicts with HMR)
       

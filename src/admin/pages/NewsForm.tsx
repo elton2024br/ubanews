@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAdmin } from '../context/AdminProvider';
+import { generateAriaLabel, announceToScreenReader } from '../../utils/accessibility';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -44,6 +45,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabaseClient';
+import { useCSRF } from '../../utils/csrf';
 import { toast } from 'sonner';
 
 const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').trim();
@@ -115,6 +117,9 @@ export const NewsForm: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+  const csrfToken = useCSRF();
 
   const isEditing = Boolean(id);
   const isNewNews = !isEditing;
@@ -236,6 +241,7 @@ export const NewsForm: React.FC = () => {
   const onSubmit = async (data: NewsFormData) => {
     try {
       setSaving(true);
+      announceToScreenReader(isEditing ? 'Atualizando notícia...' : 'Criando notícia...');
       
       const newsData = {
         ...data,
@@ -256,10 +262,12 @@ export const NewsForm: React.FC = () => {
         if (error) {
           console.error('Error updating news:', error);
           toast.error('Erro ao atualizar notícia');
+          announceToScreenReader('Erro ao atualizar notícia');
           return;
         }
 
         toast.success('Notícia atualizada com sucesso');
+        announceToScreenReader('Notícia atualizada com sucesso');
       } else {
         // Create new news
         const { data: createdNews, error: createError } = await supabase
@@ -274,6 +282,7 @@ export const NewsForm: React.FC = () => {
         if (createError) {
           console.error('Error creating news:', createError);
           toast.error('Erro ao criar notícia');
+          announceToScreenReader('Erro ao criar notícia');
           return;
         }
 
@@ -292,12 +301,15 @@ export const NewsForm: React.FC = () => {
           if (approvalError) {
             console.error('Error creating news approval:', approvalError);
             toast.error('Erro ao enviar notícia para aprovação');
+            announceToScreenReader('Erro ao enviar notícia para aprovação');
             return;
           }
 
           toast.success('Notícia criada e enviada para aprovação');
+          announceToScreenReader('Notícia criada e enviada para aprovação');
         } else {
           toast.success('Notícia criada com sucesso');
+          announceToScreenReader('Notícia criada com sucesso');
         }
       }
 
@@ -306,6 +318,7 @@ export const NewsForm: React.FC = () => {
     } catch (error) {
       console.error('Error saving news:', error);
       toast.error('Erro ao salvar notícia');
+      announceToScreenReader('Erro ao salvar notícia');
     } finally {
       setSaving(false);
     }
@@ -370,24 +383,48 @@ export const NewsForm: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div 
+        className="space-y-6"
+        role="status"
+        aria-label={generateAriaLabel('Carregando formulário de notícia')}
+      >
         <div className="h-20 bg-gray-200 rounded-lg animate-pulse" />
         <div className="h-96 bg-gray-200 rounded-lg animate-pulse" />
+        <span className="sr-only">Carregando formulário...</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div 
+      className="space-y-6"
+      ref={mainContentRef}
+      role="main"
+      aria-labelledby="page-title"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <header 
+        className="flex items-center justify-between"
+        role="banner"
+      >
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={handleExit}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              announceToScreenReader('Voltando para lista de notícias');
+              handleExit();
+            }}
+            className="focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            aria-label={generateAriaLabel('Voltar para lista de notícias')}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" />
             Voltar
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">
+            <h1 
+              id="page-title"
+              className="text-2xl font-bold"
+            >
               {isEditing ? 'Editar Notícia' : 'Nova Notícia'}
             </h1>
             <p className="text-gray-600">
@@ -395,33 +432,56 @@ export const NewsForm: React.FC = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div 
+          className="flex items-center space-x-2"
+          role="toolbar"
+          aria-label="Ações do formulário"
+        >
           {hasUnsavedChanges && (
-            <Badge variant="outline" className="text-orange-600 border-orange-200">
-              <AlertCircle className="w-3 h-3 mr-1" />
+            <Badge 
+              variant="outline" 
+              className="text-orange-600 border-orange-200"
+              aria-label={generateAriaLabel('Existem alterações não salvas no formulário')}
+            >
+              <AlertCircle className="w-3 h-3 mr-1" aria-hidden="true" />
               Alterações não salvas
             </Badge>
           )}
           <Button
             variant="outline"
-            onClick={handlePreview}
+            onClick={() => {
+              announceToScreenReader('Abrindo pré-visualização da notícia');
+              handlePreview();
+            }}
             disabled={!watchedValues.title || !stripHtml(watchedValues.content)}
+            className="focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            aria-label={generateAriaLabel('Pré-visualizar notícia em nova aba')}
           >
-            <Eye className="w-4 h-4 mr-2" />
+            <Eye className="w-4 h-4 mr-2" aria-hidden="true" />
             Pré-visualizar
           </Button>
         </div>
-      </div>
+      </header>
 
       {/* Form */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form 
+          ref={formRef}
+          onSubmit={form.handleSubmit(onSubmit)} 
+          className="space-y-6"
+          noValidate
+          aria-labelledby="page-title"
+        >
+          <input type="hidden" name="csrf_token" value={csrfToken} />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              <Card>
+              <Card 
+                role="region"
+                aria-labelledby="main-content-title"
+              >
                 <CardHeader>
-                  <CardTitle>Conteúdo Principal</CardTitle>
+                  <CardTitle id="main-content-title">Conteúdo Principal</CardTitle>
                   <CardDescription>
                     Informações principais da notícia
                   </CardDescription>
@@ -493,9 +553,12 @@ export const NewsForm: React.FC = () => {
 
             {/* Sidebar */}
             <div className="space-y-6">
-              <Card>
+              <Card 
+                role="region"
+                aria-labelledby="settings-title"
+              >
                 <CardHeader>
-                  <CardTitle>Configurações</CardTitle>
+                  <CardTitle id="settings-title">Configurações</CardTitle>
                   <CardDescription>
                     Status e metadados da notícia
                   </CardDescription>
@@ -611,17 +674,27 @@ export const NewsForm: React.FC = () => {
                             ref={fileInputRef}
                             onChange={handleImageUpload}
                             className="hidden"
+                            aria-label={generateAriaLabel('Selecionar arquivo de imagem')}
                           />
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => {
+                              announceToScreenReader('Abrindo seletor de arquivo');
+                              fileInputRef.current?.click();
+                            }}
                             disabled={uploadingImage}
+                            className="focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            aria-label={generateAriaLabel(uploadingImage ? 'Enviando imagem' : 'Escolher arquivo de imagem')}
                           >
                             {uploadingImage ? (
                               <>
-                                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                                <div 
+                                  className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" 
+                                  aria-hidden="true"
+                                />
                                 Enviando...
+                                <span className="sr-only">Enviando imagem...</span>
                               </>
                             ) : (
                               'Escolher arquivo'
@@ -636,22 +709,31 @@ export const NewsForm: React.FC = () => {
               </Card>
 
               {/* Action Buttons */}
-              <Card>
+              <Card 
+                role="region"
+                aria-labelledby="actions-title"
+              >
                 <CardContent className="pt-6">
+                  <h3 id="actions-title" className="sr-only">Ações do formulário</h3>
                   <div className="space-y-3">
                     <Button
                       type="submit"
-                      className="w-full"
+                      className="w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                       disabled={saving}
+                      aria-label={generateAriaLabel(saving ? 'Salvando notícia' : `${isEditing ? 'Atualizar' : 'Criar'} notícia`)}
                     >
                       {saving ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          <div 
+                            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" 
+                            aria-hidden="true"
+                          />
                           Salvando...
+                          <span className="sr-only">Salvando notícia...</span>
                         </>
                       ) : (
                         <>
-                          <Save className="w-4 h-4 mr-2" />
+                          <Save className="w-4 h-4 mr-2" aria-hidden="true" />
                           {isEditing ? 'Atualizar' : 'Criar'} Notícia
                         </>
                       )}
@@ -660,8 +742,12 @@ export const NewsForm: React.FC = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full"
-                      onClick={handleExit}
+                      className="w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      onClick={() => {
+                        announceToScreenReader('Cancelando edição');
+                        handleExit();
+                      }}
+                      aria-label={generateAriaLabel('Cancelar edição e voltar')}
                     >
                       Cancelar
                     </Button>
@@ -675,18 +761,31 @@ export const NewsForm: React.FC = () => {
 
       {/* Exit Confirmation Dialog */}
       <AlertDialog open={exitDialogOpen} onOpenChange={setExitDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent 
+          role="alertdialog"
+          aria-labelledby="exit-dialog-title"
+          aria-describedby="exit-dialog-description"
+        >
           <AlertDialogHeader>
-            <AlertDialogTitle>Alterações não salvas</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle id="exit-dialog-title">Alterações não salvas</AlertDialogTitle>
+            <AlertDialogDescription id="exit-dialog-description">
               Você tem alterações não salvas. Tem certeza que deseja sair sem salvar?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogCancel 
+              className="focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              aria-label={generateAriaLabel('Cancelar e continuar editando')}
+            >
+              Continuar editando
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmExit}
-              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                announceToScreenReader('Saindo sem salvar alterações');
+                confirmExit();
+              }}
+              className="bg-red-600 hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              aria-label={generateAriaLabel('Confirmar saída sem salvar')}
             >
               Sair sem salvar
             </AlertDialogAction>

@@ -1,4 +1,18 @@
+# Robots.txt for UbaNews
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /profile/edit
+Disallow: /*?
+
+# Allow social media bots
 User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
 Allow: /
 
 User-agent: Bingbot
@@ -10,5 +24,12 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: *
+User-agent: LinkedInBot
 Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+# Sitemap
+Sitemap: https://ubanews.com.br/sitemap.xml
+Sitemap: https://ubanews.com.br/sitemap-news.xml

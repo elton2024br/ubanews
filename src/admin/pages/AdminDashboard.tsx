@@ -30,12 +30,16 @@ import {
   Activity,
   BarChart3,
   PieChart as PieChartIcon,
-  RefreshCw
+  RefreshCw,
+  MessageSquare,
+  TrendingUp as AnalyticsIcon,
+  Settings2
 } from 'lucide-react';
 import { DashboardStats } from '../types/admin';
 import { supabase } from '@/lib/supabaseClient';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Link } from 'react-router-dom';
 
 interface ChartData {
   name: string;
@@ -71,26 +75,35 @@ const AdminDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch basic stats
-      const [newsResult, usersResult] = await Promise.all([
-        supabase.from('admin_news').select('*'),
-        hasPermission('users', 'read') ? supabase.from('admin_users').select('*') : null
+      // Fetch basic stats from correct tables
+      const [newsResult, adminNewsResult, userProfilesResult, adminUsersResult] = await Promise.all([
+        supabase.from('news').select('id, status, views, created_at'),
+        supabase.from('admin_news').select('id, status, views, created_at'),
+        hasPermission('users', 'read') ? supabase.from('user_profiles').select('id, created_at') : null,
+        hasPermission('users', 'read') ? supabase.from('admin_users').select('id, is_active, created_at') : null
       ]);
 
-      if (newsResult.data) {
-        const totalNews = newsResult.data.length;
-        const publishedNews = newsResult.data.filter(n => n.status === 'published').length;
-        const draftNews = newsResult.data.filter(n => n.status === 'draft').length;
-        const pendingApprovals = newsResult.data.filter(n => n.status === 'pending').length;
+      // Combine news from both tables
+      const allNews = [...(newsResult.data || []), ...(adminNewsResult.data || [])];
+      
+      if (allNews.length > 0) {
+        const totalNews = allNews.length;
+        const publishedNews = allNews.filter(n => n.status === 'published').length;
+        const draftNews = allNews.filter(n => n.status === 'draft').length;
+        const pendingApprovals = allNews.filter(n => n.status === 'pending').length;
         
-        // Calculate total views (mock data for now)
-        const totalViews = newsResult.data.reduce((sum, news) => sum + (news.views || 0), 0);
+        // Calculate total views from real data
+        const totalViews = allNews.reduce((sum, news) => sum + (news.views || 0), 0);
+        
+        // Count active admin users and total user profiles
+        const activeAdminUsers = adminUsersResult?.data?.filter(u => u.is_active)?.length || 0;
+        const totalUserProfiles = userProfilesResult?.data?.length || 0;
 
         setStats({
           totalNews,
           publishedNews,
           draftNews,
-          totalUsers: usersResult?.data?.length || 0,
+          totalUsers: totalUserProfiles + activeAdminUsers,
           totalViews,
           pendingApprovals
         });
@@ -105,9 +118,9 @@ const AdminDashboard: React.FC = () => {
           };
         }).reverse();
 
-        // News per day (last 7 days)
+        // News per day (last 7 days) - using combined news data
         const newsPerDay = last7Days.map(day => {
-          const dayNews = newsResult.data.filter(news => {
+          const dayNews = allNews.filter(news => {
             const newsDate = format(new Date(news.created_at), 'yyyy-MM-dd');
             return newsDate === day.date;
           });
@@ -124,11 +137,19 @@ const AdminDashboard: React.FC = () => {
           { name: 'Pendentes', value: pendingApprovals }
         ].filter(item => item.value > 0);
 
-        // Views per day (mock data)
-        const viewsPerDay = last7Days.map(day => ({
-          ...day,
-          value: Math.floor(Math.random() * 1000) + 100
-        }));
+        // Views per day - calculate from real data
+        const viewsPerDay = last7Days.map(day => {
+          const dayViews = allNews
+            .filter(news => {
+              const newsDate = format(new Date(news.created_at), 'yyyy-MM-dd');
+              return newsDate === day.date;
+            })
+            .reduce((sum, news) => sum + (news.views || 0), 0);
+          return {
+            ...day,
+            value: dayViews
+          };
+        });
 
         setChartData({
           newsPerDay,
@@ -378,21 +399,36 @@ const AdminDashboard: React.FC = () => {
           <CardDescription>Acesso rápido às principais funcionalidades</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Button className="h-20 flex-col space-y-2">
-              <FileText className="w-6 h-6" />
-              <span>Nova Notícia</span>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Button className="h-20 flex-col space-y-2" asChild>
+              <Link to="/admin/news/new">
+                <FileText className="w-6 h-6" />
+                <span>Nova Notícia</span>
+              </Link>
             </Button>
+            
+            <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
+              <Link to="/admin/analytics">
+                <AnalyticsIcon className="w-6 h-6" />
+                <span>Analytics</span>
+              </Link>
+            </Button>
+            
+            <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
+              <Link to="/admin/comments">
+                <MessageSquare className="w-6 h-6" />
+                <span>Comentários</span>
+              </Link>
+            </Button>
+            
             {hasPermission('users', 'create') && (
-              <Button variant="outline" className="h-20 flex-col space-y-2">
-                <Users className="w-6 h-6" />
-                <span>Novo Usuário</span>
+              <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
+                <Link to="/admin/users">
+                  <Users className="w-6 h-6" />
+                  <span>Gerenciar Usuários</span>
+                </Link>
               </Button>
             )}
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <Activity className="w-6 h-6" />
-              <span>Ver Logs</span>
-            </Button>
           </div>
         </CardContent>
       </Card>

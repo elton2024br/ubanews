@@ -1,7 +1,21 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createRateLimitedSupabaseClient } from '@/utils/rateLimiter';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Debug logs para verificar se as variáveis estão sendo carregadas
+console.log('[SupabaseClient] DEBUG - Verificando variáveis de ambiente:');
+console.log('[SupabaseClient] VITE_SUPABASE_URL:', supabaseUrl ? 'DEFINIDA' : 'UNDEFINED');
+console.log('[SupabaseClient] VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'DEFINIDA (length: ' + supabaseAnonKey?.length + ')' : 'UNDEFINED');
+console.log('[SupabaseClient] import.meta.env:', import.meta.env);
+
+if (!supabaseUrl) {
+  console.error('[SupabaseClient] ERRO: VITE_SUPABASE_URL não está definida!');
+}
+if (!supabaseAnonKey) {
+  console.error('[SupabaseClient] ERRO: VITE_SUPABASE_ANON_KEY não está definida!');
+}
 
 let supabase: SupabaseClient<Database>;
 
@@ -64,10 +78,17 @@ const createSupabaseClient = (url: string, key: string) => {
 };
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables; using mock client');
-  supabase = createClient('https://localhost', 'anon-key');
+  console.error('[SupabaseClient] ERRO CRÍTICO: Variáveis de ambiente não encontradas!');
+  console.error('[SupabaseClient] Verifique se o arquivo .env existe e contém:');
+  console.error('[SupabaseClient] - VITE_SUPABASE_URL');
+  console.error('[SupabaseClient] - VITE_SUPABASE_ANON_KEY');
+  throw new Error('Supabase environment variables are required');
 } else {
-  supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+  console.log('[SupabaseClient] Criando cliente Supabase com variáveis válidas');
+  const baseClient = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+  
+  // Aplicar rate limiting ao cliente Supabase
+  supabase = createRateLimitedSupabaseClient(baseClient);
   
   // Adicionar listener para erros de autenticação
   supabase.auth.onAuthStateChange((event, session) => {
@@ -77,6 +98,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
       console.log('[Supabase] User signed out');
     }
   });
+  
+  console.log('[SupabaseClient] Cliente Supabase criado com sucesso com rate limiting');
 }
 
 export { supabase };

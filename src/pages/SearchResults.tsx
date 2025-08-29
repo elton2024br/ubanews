@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { ArrowLeft, Filter, SortAsc, SortDesc, Grid, List, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import AdvancedSearch from '@/components/AdvancedSearch';
 import { useAdvancedSearch } from '@/hooks/useAdvancedSearch';
 import { useButtonInteractions } from '@/hooks/useMicrointeractions';
 import { cn } from '@/lib/utils';
-import { announceToScreenReader } from '@/utils/accessibility';
+import { announceToScreenReader, generateAriaLabel, createButtonProps } from '@/utils/accessibility';
 
 interface SearchFilter {
   id: string;
@@ -27,6 +27,8 @@ const SearchResults: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const resultsRef = useRef<HTMLElement>(null);
+  const sortControlsRef = useRef<HTMLDivElement>(null);
   
   const { createButtonProps } = useButtonInteractions();
   
@@ -189,7 +191,7 @@ const SearchResults: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border" role="banner">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4 mb-4">
             <Button
@@ -200,13 +202,13 @@ const SearchResults: React.FC = () => {
                 hapticType: 'light'
               })}
               className={cn(
-                'flex items-center gap-2',
+                'flex items-center gap-2 focus:ring-2 focus:ring-primary focus:ring-offset-2',
                 createButtonProps({ onClick: () => window.history.back() }).className
               )}
-              aria-label="Voltar"
+              aria-label={generateAriaLabel('back-button', 'Voltar para a página anterior')}
             >
-              <ArrowLeft className="w-4 h-4" />
-              Voltar
+              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+              <span>Voltar</span>
             </Button>
             
             <h1 className="text-xl font-bold flex-1">
@@ -215,35 +217,43 @@ const SearchResults: React.FC = () => {
           </div>
           
           {/* Search Bar */}
-          <AdvancedSearch
-            onSearch={handleSearch}
-            suggestions={suggestions}
-            className="mb-4"
-          />
+          <section role="search" aria-label="Busca avançada">
+            <AdvancedSearch
+              onSearch={handleSearch}
+              suggestions={suggestions}
+              className="mb-4"
+            />
+          </section>
           
           {/* Search Info */}
           {(query || filters.length > 0) && (
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <section className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground" role="region" aria-labelledby="search-info-title">
               {query && (
-                <span>
+                <span id="search-info-title">
                   Buscando por: <strong className="text-foreground">"{query}"</strong>
                 </span>
               )}
               {filters.length > 0 && (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1" role="group" aria-label="Filtros aplicados">
                   {filters.map(filter => (
-                    <Badge key={filter.id} variant="secondary" className="text-xs">
+                    <Badge 
+                      key={filter.id} 
+                      variant="secondary" 
+                      className="text-xs"
+                      role="status"
+                      aria-label={`Filtro aplicado: ${filter.label}`}
+                    >
                       {filter.label}
                     </Badge>
                   ))}
                 </div>
               )}
               {totalResults > 0 && (
-                <span className="ml-auto">
+                <span className="ml-auto" role="status" aria-live="polite">
                   {totalResults} resultado{totalResults !== 1 ? 's' : ''}
                 </span>
               )}
-            </div>
+            </section>
           )}
         </div>
       </header>
@@ -251,10 +261,10 @@ const SearchResults: React.FC = () => {
       <main className="container mx-auto px-4 py-6">
         {/* Controls */}
         {results.length > 0 && (
-          <div className="flex items-center justify-between mb-6 gap-4">
+          <div className="flex items-center justify-between mb-6 gap-4" role="toolbar" aria-label="Controles de visualização e ordenação">
             {/* Sort Controls */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground hidden sm:inline">
+            <div ref={sortControlsRef} className="flex items-center gap-2" role="group" aria-labelledby="sort-label">
+              <span id="sort-label" className="text-sm text-muted-foreground hidden sm:inline">
                 Ordenar por:
               </span>
               <div className="flex gap-1">
@@ -276,15 +286,17 @@ const SearchResults: React.FC = () => {
                         hapticType: 'light'
                       })}
                       className={cn(
-                        'flex items-center gap-1 text-xs',
+                        'flex items-center gap-1 text-xs focus:ring-2 focus:ring-primary focus:ring-offset-2',
                         createButtonProps({ onClick: () => handleSortChange(option) }).className
                       )}
+                      aria-pressed={sortBy === option}
+                      aria-label={generateAriaLabel('sort-option', `Ordenar por ${labels[option]}`)}
                     >
-                      {labels[option]}
+                      <span>{labels[option]}</span>
                       {sortBy === option && (
                         sortOrder === 'asc' ? 
-                          <SortAsc className="w-3 h-3" /> : 
-                          <SortDesc className="w-3 h-3" />
+                          <SortAsc className="w-3 h-3" aria-hidden="true" /> : 
+                          <SortDesc className="w-3 h-3" aria-hidden="true" />
                       )}
                     </Button>
                   );
@@ -293,7 +305,8 @@ const SearchResults: React.FC = () => {
             </div>
             
             {/* View Mode Controls */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" role="radiogroup" aria-labelledby="view-label">
+              <span id="view-label" className="sr-only">Visualização:</span>
               <Button
                 variant={viewMode === 'grid' ? 'default' : 'outline'}
                 size="sm"
@@ -302,12 +315,15 @@ const SearchResults: React.FC = () => {
                   hapticType: 'light'
                 })}
                 className={cn(
-                  'p-2',
+                  'p-2 focus:ring-2 focus:ring-primary focus:ring-offset-2',
                   createButtonProps({ onClick: () => handleViewModeChange('grid') }).className
                 )}
-                aria-label="Visualização em grade"
+                role="radio"
+                aria-checked={viewMode === 'grid'}
+                aria-label={generateAriaLabel('view-mode', 'Visualização em grade')}
               >
-                <Grid className="w-4 h-4" />
+                <Grid className="w-4 h-4" aria-hidden="true" />
+                <span className="sr-only">Grade</span>
               </Button>
               <Button
                 variant={viewMode === 'list' ? 'default' : 'outline'}
@@ -317,102 +333,138 @@ const SearchResults: React.FC = () => {
                   hapticType: 'light'
                 })}
                 className={cn(
-                  'p-2',
+                  'p-2 focus:ring-2 focus:ring-primary focus:ring-offset-2',
                   createButtonProps({ onClick: () => handleViewModeChange('list') }).className
                 )}
-                aria-label="Visualização em lista"
+                role="radio"
+                aria-checked={viewMode === 'list'}
+                aria-label={generateAriaLabel('view-mode', 'Visualização em lista')}
               >
-                <List className="w-4 h-4" />
+                <List className="w-4 h-4" aria-hidden="true" />
+                <span className="sr-only">Lista</span>
               </Button>
             </div>
           </div>
         )}
 
         {/* Results */}
-        {isLoading && results.length === 0 ? (
-          <LoadingSkeleton />
-        ) : error ? (
-          <div className="text-center py-12">
-            <div className="text-destructive mb-4">
-              <Search className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p className="text-lg font-medium">Erro na busca</p>
-              <p className="text-sm text-muted-foreground">{error}</p>
+        <main ref={resultsRef} role="main" aria-labelledby="results-title">
+          <h2 id="results-title" className="sr-only">
+            {isLoading ? 'Carregando resultados' : 
+             error ? 'Erro ao carregar resultados' :
+             results.length === 0 ? 'Nenhum resultado encontrado' :
+             `${results.length} resultados encontrados`}
+          </h2>
+          
+          {isLoading && results.length === 0 ? (
+            <div role="status" aria-label="Carregando resultados">
+              <LoadingSkeleton />
+              <span className="sr-only">Carregando resultados da busca...</span>
             </div>
-            <Button
-              {...createButtonProps({
-                onClick: () => search(query, filters),
-                hapticType: 'medium'
-              })}
-              className={createButtonProps({ onClick: () => search(query, filters) }).className}
-            >
-              Tentar novamente
-            </Button>
-          </div>
-        ) : results.length === 0 ? (
-          <div className="text-center py-12">
-            <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h2 className="text-xl font-semibold mb-2">Nenhum resultado encontrado</h2>
-            <p className="text-muted-foreground mb-4">
-              {query ? `Não encontramos resultados para "${query}"` : 'Faça uma busca para ver os resultados'}
-            </p>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>Dicas para melhorar sua busca:</p>
-              <ul className="list-disc list-inside space-y-1 max-w-md mx-auto">
-                <li>Verifique a ortografia das palavras</li>
-                <li>Use termos mais gerais</li>
-                <li>Remova alguns filtros</li>
-                <li>Tente sinônimos ou palavras relacionadas</li>
-              </ul>
+          ) : error ? (
+            <div className="text-center py-12" role="alert" aria-labelledby="error-title">
+              <h3 id="error-title" className="sr-only">Erro ao carregar resultados</h3>
+              <div className="text-destructive mb-4">
+                <Search className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-lg font-medium">Erro na busca</p>
+                <p className="text-sm text-muted-foreground">{error}</p>
+              </div>
+              <Button
+                {...createButtonProps({
+                  onClick: () => {
+                    search(query, filters);
+                    announceToScreenReader('Tentando buscar novamente');
+                  },
+                  hapticType: 'medium'
+                })}
+                className={cn(
+                  'focus:ring-2 focus:ring-primary focus:ring-offset-2',
+                  createButtonProps({ onClick: () => search(query, filters) }).className
+                )}
+                aria-label={generateAriaLabel('retry-button', 'Tentar buscar novamente')}
+              >
+                Tentar novamente
+              </Button>
             </div>
-          </div>
+          ) : results.length === 0 ? (
+            <div className="text-center py-12" role="status" aria-labelledby="no-results-title">
+              <h3 id="no-results-title" className="sr-only">Nenhum resultado encontrado</h3>
+              <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h2 className="text-xl font-semibold mb-2">Nenhum resultado encontrado</h2>
+              <p className="text-muted-foreground mb-4">
+                {query ? `Não encontramos resultados para "${query}"` : 'Faça uma busca para ver os resultados'}
+              </p>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>Dicas para melhorar sua busca:</p>
+                <ul className="list-disc list-inside space-y-1 max-w-md mx-auto">
+                  <li>Verifique a ortografia das palavras</li>
+                  <li>Use termos mais gerais</li>
+                  <li>Remova alguns filtros</li>
+                  <li>Tente sinônimos ou palavras relacionadas</li>
+                </ul>
+              </div>
+            </div>
         ) : (
           <>
             {/* Results Grid/List */}
-            <div className={cn(
-              viewMode === 'grid' 
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
-                : 'space-y-4'
-            )}>
-              {sortedResults.map((result) => (
-                <MobileNewsCard
-                  key={result.id}
-                  title={result.title}
-                  summary={result.summary}
-                  category={result.category}
-                  author={result.author}
-                  publishedAt={result.publishedAt}
-                  imageUrl={result.imageUrl}
-                  readTime={result.readTime}
-                  views={result.views}
-                  className={cn(
-                    viewMode === 'list' && 'flex gap-4 p-4 border border-border rounded-lg'
-                  )}
-                />
+            <section 
+              className={cn(
+                viewMode === 'grid' 
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                  : 'space-y-4'
+              )}
+              role="feed"
+              aria-label={`Resultados da busca em modo ${viewMode === 'grid' ? 'grade' : 'lista'}`}
+              aria-busy={isLoading}
+            >
+              {sortedResults.map((result, index) => (
+                <article key={result.id} role="article">
+                  <MobileNewsCard
+                    title={result.title}
+                    summary={result.summary}
+                    category={result.category}
+                    author={result.author}
+                    publishedAt={result.publishedAt}
+                    imageUrl={result.imageUrl}
+                    readTime={result.readTime}
+                    views={result.views}
+                    className={cn(
+                      viewMode === 'list' && 'flex gap-4 p-4 border border-border rounded-lg'
+                    )}
+                  />
+                </article>
               ))}
-            </div>
+            </section>
             
             {/* Load More */}
             {hasMore && (
-              <div className="text-center mt-8">
+              <div className="text-center mt-8" role="navigation" aria-label="Paginação">
                 <Button
                   {...createButtonProps({
-                    onClick: loadMore,
+                    onClick: () => {
+                      loadMore();
+                      announceToScreenReader('Carregando mais resultados');
+                    },
                     hapticType: 'medium',
                     animationPreset: 'scaleIn'
                   })}
                   disabled={isLoading}
                   className={cn(
-                    'min-w-32',
+                    'min-w-32 focus:ring-2 focus:ring-primary focus:ring-offset-2',
                     createButtonProps({ onClick: loadMore }).className
                   )}
+                  aria-label={generateAriaLabel('load-more', isLoading ? 'Carregando mais resultados' : 'Carregar mais resultados')}
+                  aria-describedby="load-more-description"
                 >
                   {isLoading ? 'Carregando...' : 'Carregar mais'}
                 </Button>
+                <p id="load-more-description" className="sr-only">
+                  Carrega mais resultados da busca atual
+                </p>
               </div>
             )}
           </>
-        )}
-      </main>
+        )}        </main>
     </div>
   );
 };

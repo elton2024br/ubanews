@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -88,7 +89,7 @@ const NewsPreview = () => {
 
             <div
               className="prose dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: previewData.content }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewData.content) }}
             />
 
             {previewData.tags && previewData.tags.length > 0 && (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAdmin } from '../context/AdminProvider';
 import { Button } from '../../components/ui/button';
@@ -8,20 +8,33 @@ import { Label } from '../../components/ui/label';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Loader2, Shield, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCSRF } from '../../utils/csrf';
+import { generateAriaLabel, announceToScreenReader } from '../../utils/accessibility';
 
 const LoginPage: React.FC = () => {
   const { user, login, loading } = useAdmin();
+  const { getToken } = useCSRF();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [csrfToken, setCsrfToken] = useState('');
   const [validationErrors, setValidationErrors] = useState<{
     email?: string;
     password?: string;
     otp?: string;
   }>({});
+  
+  // Refs para acessibilidade
+  const formRef = useRef<HTMLFormElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  // Gerar token CSRF quando o componente for montado
+  useEffect(() => {
+    setCsrfToken(getToken());
+  }, [getToken]);
 
   // Redirect if already authenticated
   if (user && !loading) {
@@ -103,23 +116,21 @@ const LoginPage: React.FC = () => {
     
     // Validar formulário antes de enviar
     if (!validateForm()) {
+      announceToScreenReader('Formulário contém erros. Por favor, corrija os campos destacados.');
       return;
     }
     
     setIsSubmitting(true);
+    announceToScreenReader('Processando login...');
 
     try {
       console.log('[LoginPage] Chamando função de login...');
-      const result = await login(email.trim(), password, otp.trim() || undefined);
+      await login(email.trim(), password, otp.trim() || undefined);
       
-      if (result.success) {
-        console.log('[LoginPage] Login bem-sucedido');
-        toast.success('Login realizado com sucesso!');
-      } else {
-        console.error('[LoginPage] Falha no login:', result.error);
-        setError(result.error || 'Erro ao fazer login');
-        toast.error('Falha no login');
-      }
+      console.log('[LoginPage] Login bem-sucedido');
+      announceToScreenReader('Login realizado com sucesso! Redirecionando para o painel administrativo.');
+      toast.success('Login realizado com sucesso!');
+      
     } catch (err: unknown) {
       console.error('[LoginPage] Erro crítico durante login:', err);
       
@@ -131,7 +142,15 @@ const LoginPage: React.FC = () => {
       }
       
       setError(errorMessage);
+      announceToScreenReader(`Erro no login: ${errorMessage}`);
       toast.error('Falha no login');
+      
+      // Focar no primeiro campo com erro ou no campo de erro
+      setTimeout(() => {
+        if (errorRef.current) {
+          errorRef.current.focus();
+        }
+      }, 100);
     } finally {
       setIsSubmitting(false);
     }
@@ -139,8 +158,16 @@ const LoginPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div 
+        className="min-h-screen flex items-center justify-center"
+        role="status"
+        aria-label="Carregando página de login"
+      >
+        <Loader2 
+          className="h-8 w-8 animate-spin" 
+          aria-hidden="true"
+        />
+        <span className="sr-only">Carregando...</span>
       </div>
     );
   }
@@ -148,31 +175,70 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header 
+        className="bg-white shadow-sm border-b"
+        role="banner"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-2">
-              <Shield className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">UbaNews Admin</h1>
+              <Shield 
+                className="h-8 w-8 text-blue-600" 
+                aria-hidden="true"
+              />
+              <h1 
+                className="text-2xl font-bold text-gray-900"
+                id="page-title"
+              >
+                UbaNews Admin
+              </h1>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+      <main 
+        className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8"
+        role="main"
+        aria-labelledby="page-title"
+      >
         <div className="max-w-md w-full space-y-8">
-          <Card className="shadow-lg">
+          <Card 
+            className="shadow-lg"
+            role="region"
+            aria-labelledby="login-form-title"
+          >
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-center">Entrar no Sistema</CardTitle>
+              <CardTitle 
+                className="text-2xl font-bold text-center"
+                id="login-form-title"
+              >
+                Entrar no Sistema
+              </CardTitle>
               <CardDescription className="text-center">
                 Acesse o painel administrativo do UbaNews
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form 
+                ref={formRef}
+                onSubmit={handleSubmit} 
+                className="space-y-4"
+                noValidate
+                aria-labelledby="login-form-title"
+              >
+                {/* Campo oculto para token CSRF */}
+                <input type="hidden" name="_csrf" value={csrfToken} />
+                
                 {error && (
-                  <Alert variant="destructive">
+                  <Alert 
+                    variant="destructive"
+                    ref={errorRef}
+                    role="alert"
+                    aria-live="polite"
+                    tabIndex={-1}
+                  >
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
@@ -194,9 +260,19 @@ const LoginPage: React.FC = () => {
                     className={validationErrors.email ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                     disabled={isSubmitting}
+                    aria-invalid={!!validationErrors.email}
+                    aria-describedby={validationErrors.email ? 'email-error' : undefined}
+                    autoComplete="email"
                   />
                   {validationErrors.email && (
-                    <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                    <p 
+                      id="email-error"
+                      className="mt-1 text-sm text-red-600"
+                      role="alert"
+                      aria-live="polite"
+                    >
+                      {validationErrors.email}
+                    </p>
                   )}
                 </div>
 
@@ -218,24 +294,42 @@ const LoginPage: React.FC = () => {
                       className={validationErrors.password ? 'border-red-500 focus:ring-red-500' : ''}
                       required
                       disabled={isSubmitting}
+                      aria-invalid={!!validationErrors.password}
+                      aria-describedby={validationErrors.password ? 'password-error' : 'password-toggle-desc'}
+                      autoComplete="current-password"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      onClick={() => {
+                        setShowPassword(!showPassword);
+                        announceToScreenReader(showPassword ? 'Senha oculta' : 'Senha visível');
+                      }}
                       disabled={isSubmitting}
+                      aria-label={generateAriaLabel(showPassword ? 'Ocultar senha' : 'Mostrar senha')}
+                      aria-describedby="password-toggle-desc"
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
+                        <EyeOff className="h-4 w-4" aria-hidden="true" />
                       ) : (
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" aria-hidden="true" />
                       )}
                     </Button>
+                    <span id="password-toggle-desc" className="sr-only">
+                      Botão para {showPassword ? 'ocultar' : 'mostrar'} a senha
+                    </span>
                   </div>
                   {validationErrors.password && (
-                    <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+                    <p 
+                      id="password-error"
+                      className="mt-1 text-sm text-red-600"
+                      role="alert"
+                      aria-live="polite"
+                    >
+                      {validationErrors.password}
+                    </p>
                   )}
                 </div>
 
@@ -258,26 +352,45 @@ const LoginPage: React.FC = () => {
                     className={validationErrors.otp ? 'border-red-500 focus:ring-red-500' : ''}
                     maxLength={6}
                     disabled={isSubmitting}
+                    aria-invalid={!!validationErrors.otp}
+                    aria-describedby={validationErrors.otp ? 'otp-error' : 'otp-desc'}
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
                   />
+                  <p id="otp-desc" className="text-xs text-gray-500">
+                    Digite o código de 6 dígitos do seu aplicativo autenticador, se habilitado
+                  </p>
                   {validationErrors.otp && (
-                    <p className="mt-1 text-sm text-red-600">{validationErrors.otp}</p>
+                    <p 
+                      id="otp-error"
+                      className="mt-1 text-sm text-red-600"
+                      role="alert"
+                      aria-live="polite"
+                    >
+                      {validationErrors.otp}
+                    </p>
                   )}
                 </div>
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   disabled={isSubmitting || !email || !password}
+                  aria-describedby="submit-desc"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                       Entrando...
                     </>
                   ) : (
                     'Entrar'
                   )}
                 </Button>
+                <p id="submit-desc" className="sr-only">
+                  {isSubmitting ? 'Processando login, aguarde...' : 'Clique para fazer login no sistema'}
+                </p>
               </form>
 
             </CardContent>
@@ -286,10 +399,13 @@ const LoginPage: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t">
+      <footer 
+        className="bg-white border-t"
+        role="contentinfo"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-4 text-center text-sm text-gray-500">
-            © 2024 UbaNews. Todos os direitos reservados.
+            <p>© 2024 UbaNews. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
