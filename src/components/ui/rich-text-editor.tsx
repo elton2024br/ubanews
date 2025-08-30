@@ -1,6 +1,4 @@
-import React, { useEffect } from 'react'
-import { EditorContent, useEditor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
+import React, { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 interface RichTextEditorProps {
@@ -10,12 +8,22 @@ interface RichTextEditorProps {
 }
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value = '', onChange, className }) => {
-  const editor = useEditor({
-    extensions: [StarterKit],
+  const [tiptap, setTiptap] = useState<any>(null)
+
+  useEffect(() => {
+    Promise.all([import('@tiptap/react'), import('@tiptap/starter-kit')]).then(
+      ([react, starter]) => {
+        setTiptap({ ...react, StarterKit: starter.default })
+      }
+    )
+  }, [])
+
+  const editor = tiptap?.useEditor({
+    extensions: [tiptap.StarterKit],
     content: value,
-    onUpdate({ editor }) {
+    onUpdate({ editor }: any) {
       onChange?.(editor.getHTML())
-    }
+    },
   })
 
   useEffect(() => {
@@ -23,6 +31,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value = '', onCh
       editor.commands.setContent(value)
     }
   }, [editor, value])
+
+  if (!tiptap || !editor) return null
+
+  const EditorContent = tiptap.EditorContent
 
   return (
     <div
@@ -37,3 +49,4 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value = '', onCh
 }
 
 export default RichTextEditor
+

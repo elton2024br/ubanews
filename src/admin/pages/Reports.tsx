@@ -11,22 +11,6 @@ import {
   SelectValue,
 } from '../../components/ui/select';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  Area,
-  AreaChart
-} from 'recharts';
-import {
   FileText,
   TrendingUp,
   Users,
@@ -67,6 +51,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 export const Reports: React.FC = () => {
   const { user } = useAdmin();
+  const [recharts, setRecharts] = useState<any>(null);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30'); // days
@@ -75,6 +60,10 @@ export const Reports: React.FC = () => {
   useEffect(() => {
     loadReportData();
   }, [dateRange]);
+
+  useEffect(() => {
+    import('recharts').then(setRecharts)
+  }, [])
 
   const loadReportData = async () => {
     try {
@@ -223,7 +212,7 @@ export const Reports: React.FC = () => {
     toast.success('Relatório exportado com sucesso');
   };
 
-  if (loading) {
+  if (loading || !recharts) {
     return (
       <div className="space-y-6">
         <div className="h-20 bg-gray-200 rounded-lg animate-pulse" />
@@ -255,6 +244,22 @@ export const Reports: React.FC = () => {
       </div>
     );
   }
+  const {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    LineChart,
+    Line,
+    Area,
+    AreaChart,
+  } = recharts
 
   return (
     <div className="space-y-6">
