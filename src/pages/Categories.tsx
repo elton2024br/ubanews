@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNewsByCategory } from '@/hooks/useNewsByCategory';
 import { Newspaper, TrendingUp, MapPin, Users, Building, Heart, Leaf, Car, GraduationCap, AlertTriangle } from 'lucide-react';
+import SEO from '../components/SEO';
 
 interface Category {
   id: string;
@@ -153,8 +154,10 @@ const Categories: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <MobileHeader />
+    <>
+      <SEO title="Categorias - UbaNews" description="Explore notícias por categoria" />
+      <div className="min-h-screen bg-background">
+        <MobileHeader />
       
       <main className="container mx-auto px-4 py-8">
         {/* Hero Section */}
@@ -231,6 +234,7 @@ const Categories: React.FC = () => {
 
       <Footer />
     </div>
+    </>
   );
 };
 

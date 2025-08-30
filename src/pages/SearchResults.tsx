@@ -10,6 +10,7 @@ import { useAdvancedSearch } from '@/hooks/useAdvancedSearch';
 import { useButtonInteractions } from '@/hooks/useMicrointeractions';
 import { cn } from '@/lib/utils';
 import { announceToScreenReader } from '@/utils/accessibility';
+import SEO from '@/components/SEO';
 
 interface SearchFilter {
   id: string;
@@ -186,8 +187,12 @@ const SearchResults: React.FC = () => {
     </div>
   );
 
+  const pageTitle = query ? `Busca: ${query} - UbaNews` : 'Busca - UbaNews';
+
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      <SEO title={pageTitle} description="Resultados da busca no UbaNews" />
+      <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="container mx-auto px-4 py-4">
@@ -414,6 +419,7 @@ const SearchResults: React.FC = () => {
         )}
       </main>
     </div>
+    </>
   );
 };
 

@@ -5,6 +5,7 @@ import { LoadingSpinner } from "@/components/LazyComponents";
 import Footer from "@/components/Footer";
 import { TrendingUp, Radar } from "lucide-react";
 import { usePagePerformance, useComponentPerformance } from "@/hooks/useWebVitals";
+import SEO from "@/components/SEO";
 
 const MobileNewsFeed = React.lazy(() => import("@/components/MobileNewsFeed"));
 
@@ -14,8 +15,10 @@ const Index = () => {
   const { renderTime, markInteraction } = useComponentPerformance('Index');
 
   return (
-    <div className="min-h-screen bg-background">
-      <MobileHeader />
+    <>
+      <SEO title="UbaNews" description="As últimas notícias de Ubatuba" />
+      <div className="min-h-screen bg-background">
+        <MobileHeader />
       
       <main id="main-content" role="main" aria-label="Conteúdo principal">
         <HeroBanner />
@@ -45,6 +48,7 @@ const Index = () => {
       
       <Footer />
     </div>
+    </>
   );
 };
 

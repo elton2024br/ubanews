@@ -7,6 +7,7 @@ import { useDynamicData, useMigrationMetrics } from '../hooks/useFeatureFlags';
 import { NewsArticle } from '@/shared/types/news';
 import MobileHeader from '../components/MobileHeader';
 import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 
 const NewsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -125,16 +126,36 @@ const NewsPage: React.FC = () => {
   }
   
   return (
-    <div className="min-h-screen bg-background">
-      <MobileHeader />
-      <main className="container mx-auto px-4 py-6">
-        <NewsDetail 
-          article={article} 
-          onBack={() => window.history.back()}
-        />
-      </main>
-      <Footer />
-    </div>
+    <>
+      <SEO
+        title={article.title}
+        description={article.excerpt}
+        canonical={typeof window !== 'undefined' ? window.location.href : undefined}
+      >
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'NewsArticle',
+            headline: article.title,
+            image: article.image?.src,
+            datePublished: article.date,
+            author: article.author
+              ? { '@type': 'Person', name: article.author }
+              : undefined,
+          })}
+        </script>
+      </SEO>
+      <div className="min-h-screen bg-background">
+        <MobileHeader />
+        <main className="container mx-auto px-4 py-6">
+          <NewsDetail
+            article={article}
+            onBack={() => window.history.back()}
+          />
+        </main>
+        <Footer />
+      </div>
+    </>
   );
 };
 

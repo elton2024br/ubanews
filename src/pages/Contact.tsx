@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LiveAlert } from '@/components/ui/live-alert';
 import { Mail, Phone, MapPin, Send, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import SEO from '../components/SEO';
 
 interface FormData {
   name: string;
@@ -130,8 +131,10 @@ const Contact: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <MobileHeader />
+    <>
+      <SEO title="Contato - UbaNews" description="Fale com a equipe do UbaNews" />
+      <div className="min-h-screen bg-background">
+        <MobileHeader />
       
       <main className="container mx-auto px-4 py-8">
         {/* Hero Section */}
@@ -331,6 +334,7 @@ const Contact: React.FC = () => {
 
       <Footer />
     </div>
+    </>
   );
 };
 

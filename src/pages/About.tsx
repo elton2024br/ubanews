@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Newspaper, Users, Target, Eye, Heart, Shield } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const About: React.FC = () => {
   const team = [
@@ -44,8 +45,10 @@ const About: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <MobileHeader />
+    <>
+      <SEO title="Sobre - UbaNews" description="Conheça o UbaNews e nossa missão" />
+      <div className="min-h-screen bg-background">
+        <MobileHeader />
       
       <main className="container mx-auto px-4 py-8">
         {/* Hero Section */}
@@ -163,6 +166,7 @@ const About: React.FC = () => {
 
       <Footer />
     </div>
+    </>
   );
 };
 

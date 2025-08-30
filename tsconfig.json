@@ -8,7 +8,8 @@
     "baseUrl": ".",
     "paths": {
       "@/shared/*": ["./shared/*"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "react-helmet-async": ["./src/lib/react-helmet-async"]
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,
