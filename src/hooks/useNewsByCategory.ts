@@ -1,36 +1,18 @@
-import { useState } from 'react';
-import { NewsArticle } from '@/shared/types/news';
+import { useQuery } from '@tanstack/react-query';
 import { fetchNewsByCategory } from '@/services/newsApi';
+import { NewsArticle } from '@/shared/types/news';
 
-interface CategoryState {
-  [key: string]: NewsArticle[];
-}
-interface LoadingState {
-  [key: string]: boolean;
-}
-interface ErrorState {
-  [key: string]: string | null;
-}
-
-export const useNewsByCategory = () => {
-  const [newsByCategory, setNewsByCategory] = useState<CategoryState>({});
-  const [loading, setLoading] = useState<LoadingState>({});
-  const [error, setError] = useState<ErrorState>({});
-
-  const loadCategory = async (category: string) => {
-    setLoading(prev => ({ ...prev, [category]: true }));
-    setError(prev => ({ ...prev, [category]: null }));
-    try {
-      const items = await fetchNewsByCategory(category);
-      setNewsByCategory(prev => ({ ...prev, [category]: items }));
-      return items;
-    } catch (err) {
-      setError(prev => ({ ...prev, [category]: (err as Error).message }));
-      return [];
-    } finally {
-      setLoading(prev => ({ ...prev, [category]: false }));
-    }
-  };
-
-  return { newsByCategory, loading, error, loadCategory };
+/**
+ * React Query hook for fetching news articles by category.
+ * Caches results per-category for five minutes and keeps them
+ * in memory for thirty minutes.
+ */
+export const useNewsByCategory = (category?: string) => {
+  return useQuery<NewsArticle[]>({
+    queryKey: ['news-by-category', category],
+    queryFn: () => fetchNewsByCategory(category!),
+    enabled: !!category,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
+  });
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { announceToScreenReader } from '@/utils/accessibility';
 import { searchNews, SearchResult } from '@/services/newsApi';
 
@@ -46,6 +47,7 @@ export const useAdvancedSearch = (options: UseAdvancedSearchOptions = {}) => {
 
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const queryClient = useQueryClient();
 
   // Debounced search effect
   useEffect(() => {
@@ -113,7 +115,12 @@ export const useAdvancedSearch = (options: UseAdvancedSearchOptions = {}) => {
         const author = filters.find(f => f.type === 'author')?.value;
         const tags = filters.filter(f => f.type === 'tag').map(f => f.value);
 
-        const results = await searchNews({ term: query, category, date_range, author, tags });
+        const results = await queryClient.fetchQuery({
+          queryKey: ['search-news', { term: query, category, date_range, author, tags, page }],
+          queryFn: () => searchNews({ term: query, category, date_range, author, tags }),
+          staleTime: 1000 * 60, // 1 minute
+          gcTime: 1000 * 60 * 10, // 10 minutes
+        });
         const hasMore = results.length === pageSize;
 
         setSearchState(prev => ({

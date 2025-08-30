@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import MobileHeader from '../components/MobileHeader';
 import Footer from '../components/Footer';
 import { MobileNewsCard } from '../components/MobileNewsCard';
@@ -7,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNewsByCategory } from '@/hooks/useNewsByCategory';
+import { NewsArticle } from '@/shared/types/news';
 import { Newspaper, TrendingUp, MapPin, Users, Building, Heart, Leaf, Car, GraduationCap, AlertTriangle } from 'lucide-react';
 
 interface Category {
@@ -93,20 +95,14 @@ const categories: Category[] = [
 
 const Categories: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const { newsByCategory, loading: loadingCategories, error: errorCategories, loadCategory } = useNewsByCategory();
+  const queryClient = useQueryClient();
+  const { data: items = [], isLoading, error } = useNewsByCategory(selectedCategory ?? undefined);
 
   const handleCategorySelect = (categoryId: string) => {
     setSelectedCategory(categoryId);
-    if (!newsByCategory[categoryId]) {
-      loadCategory(categoryId);
-    }
   };
 
-  const renderNewsGrid = (categoryId: string) => {
-    const items = newsByCategory[categoryId] || [];
-    const isLoading = loadingCategories[categoryId];
-    const error = errorCategories[categoryId];
-
+  const renderNewsGrid = () => {
     if (isLoading) {
       return (
         <div className="grid gap-4">
@@ -126,7 +122,7 @@ const Categories: React.FC = () => {
         <div className="text-center py-12">
           <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
           <h3 className="text-lg font-semibold mb-2">Erro ao carregar notícias</h3>
-          <p className="text-muted-foreground">{error}</p>
+          <p className="text-muted-foreground">{(error as Error).message}</p>
         </div>
       );
     }
@@ -180,7 +176,11 @@ const Categories: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {categories.map((category) => {
                   const Icon = category.icon;
-                  const count = newsByCategory[category.id]?.length || 0;
+                  const count =
+                    (queryClient.getQueryData<NewsArticle[]>([
+                      'news-by-category',
+                      category.id,
+                    ]) || []).length;
 
                   return (
                     <Button
@@ -221,7 +221,7 @@ const Categories: React.FC = () => {
                       <p className="text-muted-foreground">{category.description}</p>
                     </div>
                   </div>
-                  {renderNewsGrid(selectedCategory)}
+                  {renderNewsGrid()}
                 </>
               );
             })()}

@@ -2,6 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { persistQueryClient } from "@tanstack/react-query-persist-client";
+import { createIDBPersister } from "@tanstack/query-persist-client-idb";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { useEffect, lazy, Suspense } from "react";
@@ -38,7 +40,27 @@ const Reports = lazy(() => import("./admin/pages/Reports"));
 const Performance = lazy(() => import("./admin/pages/Performance"));
 const Users = lazy(() => import("./admin/pages/Users"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 60,
+    },
+  },
+});
+
+if (typeof window !== "undefined") {
+  const persister = createIDBPersister({
+    databaseName: "ubanews-query",
+    storeName: "react-query",
+  });
+
+  persistQueryClient({
+    queryClient,
+    persister,
+    maxAge: 1000 * 60 * 60 * 24, // 24 hours
+  });
+}
 
 const App = () => {
   // Initialize service worker
