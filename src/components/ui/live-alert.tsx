@@ -1,6 +1,6 @@
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AnimatePresence, motion } from "framer-motion"
 import { CheckCircle, AlertCircle } from "lucide-react"
+import React from "react"
 
 interface LiveAlertProps {
   message: string
@@ -8,6 +8,16 @@ interface LiveAlertProps {
 }
 
 export function LiveAlert({ message, type }: LiveAlertProps) {
+  const [fm, setFm] = React.useState<any>(null)
+
+  React.useEffect(() => {
+    import("framer-motion").then(setFm)
+  }, [])
+
+  if (!fm) return null
+
+  const { AnimatePresence, motion } = fm
+
   return (
     <AnimatePresence>
       {type && (

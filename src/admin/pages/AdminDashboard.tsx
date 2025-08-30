@@ -5,20 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
-import {
   FileText,
   Users,
   Eye,
@@ -47,6 +33,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const AdminDashboard: React.FC = () => {
   const { user, hasPermission } = useAdmin();
+  const [recharts, setRecharts] = useState<any>(null)
   const [stats, setStats] = useState<DashboardStats>({
     totalNews: 0,
     publishedNews: 0,
@@ -66,6 +53,29 @@ const AdminDashboard: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  useEffect(() => {
+    import('recharts').then(setRecharts)
+  }, [])
+
+  if (!recharts) {
+    return null
+  }
+
+  const {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    LineChart,
+    Line,
+    PieChart,
+    Pie,
+    Cell,
+  } = recharts
 
   const fetchDashboardData = async () => {
     try {
