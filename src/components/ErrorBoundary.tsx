@@ -14,9 +14,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     super(props);
     this.state = {
       hasError: false,
-      error: null,
-      errorInfo: null,
-      retryCount: 0
+      error: undefined,
+      errorInfo: undefined
     };
   }
 
@@ -30,25 +29,22 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({
       error,
-      errorInfo
+      errorInfo: errorInfo.componentStack
     });
 
-    // Log error to external service
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
-    // Call custom error handler if provided
+    if ((window as any).Sentry?.captureException) {
+      (window as any).Sentry.captureException(error, { extra: errorInfo });
+    } else {
+      console.error('ErrorBoundary caught an error:', error, errorInfo);
+    }
+
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
   }
 
-  handleRetry = () => {
-    this.setState(prevState => ({
-      hasError: false,
-      error: null,
-      errorInfo: null,
-      retryCount: prevState.retryCount + 1
-    }));
+  handleReload = () => {
+    window.location.reload();
   };
 
   handleGoHome = () => {
@@ -77,7 +73,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             </h2>
             
             <p className="text-gray-600 mb-6">
-              Ocorreu um erro inesperado. Tente novamente ou volte à página inicial.
+              Ocorreu um erro inesperado. Você pode recarregar a página ou voltar à página inicial.
             </p>
 
             {this.props.showDetails && this.state.error && (
@@ -92,7 +88,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                       Stack trace
                     </summary>
                     <pre className="text-xs text-gray-600 mt-2 overflow-auto max-h-32">
-                      {this.state.errorInfo.componentStack}
+                      {this.state.errorInfo}
                     </pre>
                   </details>
                 )}
@@ -101,14 +97,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
-                onClick={this.handleRetry}
+                onClick={this.handleReload}
                 className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                disabled={this.state.retryCount >= 3}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
-                {this.state.retryCount >= 3 ? 'Muitas tentativas' : 'Tentar novamente'}
+                Recarregar página
               </button>
-              
+
               <button
                 onClick={this.handleGoHome}
                 className="flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
@@ -117,12 +112,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                 Página inicial
               </button>
             </div>
-
-            {this.state.retryCount > 0 && (
-              <p className="text-sm text-gray-500 mt-4">
-                Tentativas: {this.state.retryCount}/3
-              </p>
-            )}
           </div>
         </div>
       );

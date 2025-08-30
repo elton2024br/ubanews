@@ -75,16 +75,7 @@ const App = () => {
   }, [isSupported, error, preloadCriticalResources, preloadLoading]);
 
   return (
-    <ErrorBoundary
-      showDetails={process.env.NODE_ENV === 'development'}
-      onError={(error, errorInfo) => {
-        // Log error to external service in production
-        if (process.env.NODE_ENV === 'production') {
-          console.error('Global error caught:', error, errorInfo);
-          // Here you could send to error tracking service like Sentry
-        }
-      }}
-    >
+    <ErrorBoundary showDetails={process.env.NODE_ENV === 'development'}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="system" storageKey="ubatuba-news-theme">
           <TooltipProvider>
@@ -96,8 +87,7 @@ const App = () => {
                 v7_relativeSplatPath: true,
               }}
             >
-              <ErrorBoundary>
-                <Routes>
+              <Routes>
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Navigate to="/admin/login" replace />} />
@@ -157,7 +147,6 @@ const App = () => {
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFoundLazy />} />
                 </Routes>
-              </ErrorBoundary>
               {/* Web Vitals Dashboard - only visible in development or when debug=true */}
               <WebVitalsDashboard />
               {/* Service Worker Manager - handles updates and network status */}
