@@ -1,3 +1,4 @@
+import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Clock, Eye } from "lucide-react";
 
@@ -13,7 +14,7 @@ interface NewsCardProps {
   sizes?: string;
 }
 
-const NewsCard = ({
+const NewsCardComponent = ({
   title,
   summary,
   date,
@@ -79,5 +80,7 @@ const NewsCard = ({
     </article>
   );
 };
+
+const NewsCard = React.memo(NewsCardComponent);
 
 export default NewsCard;

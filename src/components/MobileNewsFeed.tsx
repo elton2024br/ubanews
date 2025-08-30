@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
 import { useNavigate } from 'react-router-dom';
 import { MobileNewsCard } from './MobileNewsCard';
 import { SkeletonCard, SkeletonGrid } from './SkeletonCard';
@@ -287,16 +288,18 @@ export const MobileNewsFeed: React.FC<MobileNewsFeedProps> = ({
     }
   }, [loadingState.loadingMore, currentPage, totalPages, recordLoadTime, recordError]);
 
-  const handleSearchToggle = () => {
-    setShowSearch(!showSearch);
-    if (showSearch) {
-      setFilters(prev => ({ ...prev, searchTerm: '' }));
-    }
-  };
+  const handleSearchToggle = useCallback(() => {
+    setShowSearch(prev => {
+      if (prev) {
+        setFilters(f => ({ ...f, searchTerm: '' }));
+      }
+      return !prev;
+    });
+  }, []);
 
-  const handleSearchClear = () => {
+  const handleSearchClear = useCallback(() => {
     setFilters(prev => ({ ...prev, searchTerm: '' }));
-  };
+  }, []);
 
   // Enhanced keyboard navigation with proper state management
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -475,7 +478,7 @@ export const MobileNewsFeed: React.FC<MobileNewsFeedProps> = ({
         isPulling: false
       }));
     }
-    
+
     setTouchState({
       startY: 0,
       currentY: 0,
@@ -485,19 +488,30 @@ export const MobileNewsFeed: React.FC<MobileNewsFeedProps> = ({
     });
   }, [isPulling, pullDistance, threshold, handleRefresh]);
 
+  const Row = useCallback(
+    ({ index, style }: ListChildComponentProps) => (
+      <div style={style}>
+        <MobileNewsCard
+          {...convertToCardProps(filteredNews[index])}
+          variant="compact"
+          className="w-full"
+        />
+      </div>
+    ),
+    [filteredNews, convertToCardProps]
+  );
+
   const renderNewsGrid = useMemo(() => {
     if (variant === 'list') {
       return (
-        <div className="space-y-4">
-          {filteredNews.map((news) => (
-            <MobileNewsCard
-              key={news.id}
-              {...convertToCardProps(news)}
-              variant="compact"
-              className="w-full"
-            />
-          ))}
-        </div>
+        <List
+          height={600}
+          itemCount={filteredNews.length}
+          itemSize={150}
+          width="100%"
+        >
+          {Row}
+        </List>
       );
     }
 
@@ -543,7 +557,7 @@ export const MobileNewsFeed: React.FC<MobileNewsFeedProps> = ({
         ))}
       </div>
     );
-  }, [variant, filteredNews, displayedNews, featuredNews, regularNews, loadingState.initialLoading, convertToCardProps]);
+  }, [variant, filteredNews, displayedNews, featuredNews, regularNews, loadingState.initialLoading, convertToCardProps, Row]);
 
 
 
