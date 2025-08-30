@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
 
 interface DashboardStats {
   totalNews: number;
@@ -57,6 +58,33 @@ export const Dashboard: React.FC = () => {
   });
   const [recentNews, setRecentNews] = useState<RecentNews[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const RecentNewsRow = React.useCallback(
+    ({ index, style }: ListChildComponentProps) => {
+      const news = recentNews[index];
+      return (
+        <div
+          style={style}
+          className="flex items-start space-x-4 p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-medium truncate">{news.title}</h4>
+            <div className="flex items-center space-x-2 mt-1">
+              {getStatusBadge(news.status)}
+              <span className="text-xs text-gray-500">por {news.author_name}</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {news.published_at
+                ? `Publicado em ${formatDate(news.published_at)}`
+                : `Criado em ${formatDate(news.created_at)}`}
+              {news.views && ` • ${news.views} visualizações`}
+            </p>
+          </div>
+        </div>
+      );
+    },
+    [recentNews]
+  );
 
   useEffect(() => {
     loadDashboardData();
@@ -289,28 +317,14 @@ export const Dashboard: React.FC = () => {
           <CardContent>
             <div className="space-y-4">
               {recentNews.length > 0 ? (
-                recentNews.map((news) => (
-                  <div key={news.id} className="flex items-start space-x-4 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium truncate">
-                        {news.title}
-                      </h4>
-                      <div className="flex items-center space-x-2 mt-1">
-                        {getStatusBadge(news.status)}
-                        <span className="text-xs text-gray-500">
-                          por {news.author_name}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {news.published_at ? 
-                          `Publicado em ${formatDate(news.published_at)}` :
-                          `Criado em ${formatDate(news.created_at)}`
-                        }
-                        {news.views && ` • ${news.views} visualizações`}
-                      </p>
-                    </div>
-                  </div>
-                ))
+                <List
+                  height={400}
+                  itemCount={recentNews.length}
+                  itemSize={100}
+                  width="100%"
+                >
+                  {RecentNewsRow}
+                </List>
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
